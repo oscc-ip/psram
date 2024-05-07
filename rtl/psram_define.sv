@@ -60,11 +60,6 @@
 
 `define PSRAM_PSCR_MIN_VAL  {{(`PSRAM_PSCR_WIDTH-2){1'b0}}, 2'd2}
 
-`define PSRAM_ETM_NONE 3'b000
-`define PSRAM_ETM_RISE 3'b001
-`define PSRAM_ETM_FALL 3'b010
-`define PSRAM_ETM_CLER 3'b011
-`define PSRAM_ETM_LOAD 3'b100
 // verilog_format: on
 
 interface psram_if ();
