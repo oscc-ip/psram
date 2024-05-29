@@ -59,15 +59,14 @@
 `define PSRAM_STAT_WIDTH 1
 
 `define PSRAM_PSCR_MIN_VAL  {{(`PSRAM_PSCR_WIDTH-2){1'b0}}, 2'd2}
-
 // verilog_format: on
 
 interface psram_if ();
   logic       psram_sck_o;
   logic       psram_ce_o;
-  logic [3:0] psram_io_en_o;
-  logic [3:0] psram_io_in_i;
-  logic [3:0] psram_io_out_o;
+  logic [7:0] psram_io_en_o;
+  logic [7:0] psram_io_in_i;
+  logic [7:0] psram_io_out_o;
   logic       irq_o;
 
   modport dut(
