@@ -14,9 +14,9 @@
 `include "psram_define.sv"
 
 module axi4_psram (
-    apb4_if.slave  apb4,
-    axi4_if.master axi4,
-    psram.dut      psram
+    apb4_if.slave apb4,
+    // axi4_if.master axi4,
+    psram_if.dut  psram
 );
 
 

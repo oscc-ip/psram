@@ -13,24 +13,29 @@
 
 /* register mapping
  * PSRAM_CTRL:
- * BITS:   | 31:8 | 7   | 6:4 | 3   | 2  | 1   | 0    |
- * FIELDS: | RES  | EEN | ETM | IDM | EN | ETR | OVIE |
- * PERMS:  | NONE | RW  | RW  | RW  | RW | RW  | RW   |
+ * BITS:   | 31:1 | 0  |
+ * FIELDS: | RES  | EN |
+ * PERMS:  | NONE | RW |
  * ----------------------------------------------------
  * PSRAM_PSCR:
  * BITS:   | 31:20 | 19:0 |
  * FIELDS: | RES   | PSCR |
  * PERMS:  | NONE  | RW   |
  * -----------------------------------------------------
- * PSRAM_CNT:
- * BITS:   | 31:0 |
- * FIELDS: | CNT  |
- * PERMS:  | none |
+ * PSRAM_CMD:
+ * BITS:   | 31:8 | 7:0 |
+ * FIELDS: | RES  | CMD |
+ * PERMS:  | NONE | RW  |
  * -----------------------------------------------------
- * PSRAM_CMP:
+ * PSRAM_ADR:
  * BITS:   | 31:0 |
- * FIELDS: | CMP  |
+ * FIELDS: | ADR  |
  * PERMS:  | RW   |
+ * -----------------------------------------------------
+ * PSRAM_WAIT:
+ * BITS:   | 31:8 | 7:0  |
+ * FIELDS: | RES  | WAIT |
+ * PERMS:  | NONE | RW   |
  * -----------------------------------------------------
  * PSRAM_STAT:
  * BITS:   | 31:1 | 0    |
@@ -39,6 +44,10 @@
  * -----------------------------------------------------
 */
 
+// OPI linear Burst:
+// 1. start on even address
+// 2. read has no min and max burst length limit
+// 3. write has min burst 2B limit
 // verilog_format: off
 `define PSRAM_CTRL 4'b0000 // BASEADDR + 0x00
 `define PSRAM_PSCR 4'b0001 // BASEADDR + 0x04
@@ -67,25 +76,34 @@ interface psram_if ();
   logic [7:0] psram_io_en_o;
   logic [7:0] psram_io_in_i;
   logic [7:0] psram_io_out_o;
+  logic       psram_dqs_en_o;
+  logic       psram_dqs_in_i;
+  logic       psram_dqs_out_o;
   logic       irq_o;
 
   modport dut(
       output psram_sck_o,
       output psram_ce_o,
       output psram_io_en_o,
-      input psram_io_in_i,
+      input  psram_io_in_i,
       output psram_io_out_o,
+      output psram_dqs_en_o,
+      input  psram_dqs_in_i,
+      output psram_dqs_out_o,
       output irq_o
   );
 
   // verilog_format: off
   modport tb(
-      input psram_sck_o,
-      input psram_ce_o,
-      input psram_io_en_o,
+      input  psram_sck_o,
+      input  psram_ce_o,
+      input  psram_io_en_o,
       output psram_io_in_i,
-      input psram_io_out_o,
-      input irq_o
+      input  psram_io_out_o,
+      input  psram_dqs_en_o,
+      output psram_dqs_in_i,
+      input  psram_dqs_out_o,
+      input  irq_o
   );
   // verilog_format: on
 endinterface
