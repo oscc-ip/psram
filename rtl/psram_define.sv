@@ -18,24 +18,24 @@
  * PERMS:  | NONE | RW |
  * ----------------------------------------------------
  * PSRAM_PSCR:
- * BITS:   | 31:20 | 19:0 |
- * FIELDS: | RES   | PSCR |
- * PERMS:  | NONE  | RW   |
+ * BITS:   | 31:8 | 7:0  |
+ * FIELDS: | RES  | PSCR |
+ * PERMS:  | NONE | RW   |
  * -----------------------------------------------------
  * PSRAM_CMD:
- * BITS:   | 31:8 | 7:0 |
- * FIELDS: | RES  | CMD |
- * PERMS:  | NONE | RW  |
- * -----------------------------------------------------
- * PSRAM_ADR:
- * BITS:   | 31:0 |
- * FIELDS: | ADR  |
- * PERMS:  | RW   |
+ * BITS:   | 31:16 | 15:8 | 7:0 |
+ * FIELDS: | RES   | RD   | WR  |
+ * PERMS:  | NONE  | RW   | RW  |
  * -----------------------------------------------------
  * PSRAM_WAIT:
  * BITS:   | 31:8 | 7:0  |
  * FIELDS: | RES  | WAIT |
  * PERMS:  | NONE | RW   |
+ * -----------------------------------------------------
+ * PSRAM_CFG:
+ * BITS:   | 31:8 | 7:0 |
+ * FIELDS: | RES  | CFG |
+ * PERMS:  | NONE | RW  |
  * -----------------------------------------------------
  * PSRAM_STAT:
  * BITS:   | 31:1 | 0    |
@@ -51,20 +51,23 @@
 // verilog_format: off
 `define PSRAM_CTRL 4'b0000 // BASEADDR + 0x00
 `define PSRAM_PSCR 4'b0001 // BASEADDR + 0x04
-`define PSRAM_CNT  4'b0010 // BASEADDR + 0x08
-`define PSRAM_CMP  4'b0011 // BASEADDR + 0x0C
-`define PSRAM_STAT 4'b0100 // BASEADDR + 0x10
+`define PSRAM_CMD  4'b0010 // BASEADDR + 0x08
+`define PSRAM_WAIT 4'b0011 // BASEADDR + 0x0C
+`define PSRAM_CFG  4'b0100 // BASEADDR + 0x10
+`define PSRAM_STAT 4'b0101 // BASEADDR + 0x14
 
 `define PSRAM_CTRL_ADDR {26'b0, `PSRAM_CTRL, 2'b00}
 `define PSRAM_PSCR_ADDR {26'b0, `PSRAM_PSCR, 2'b00}
-`define PSRAM_CNT_ADDR  {26'b0, `PSRAM_CNT , 2'b00}
-`define PSRAM_CMP_ADDR  {26'b0, `PSRAM_CMP , 2'b00}
+`define PSRAM_CMD_ADDR  {26'b0, `PSRAM_CMD , 2'b00}
+`define PSRAM_WAIT_ADDR {26'b0, `PSRAM_WAIT, 2'b00}
+`define PSRAM_CFG_ADDR  {26'b0, `PSRAM_CFG,  2'b00}
 `define PSRAM_STAT_ADDR {26'b0, `PSRAM_STAT, 2'b00}
 
-`define PSRAM_CTRL_WIDTH 8
-`define PSRAM_PSCR_WIDTH 20
-`define PSRAM_CNT_WIDTH  32
-`define PSRAM_CMP_WIDTH  32
+`define PSRAM_CTRL_WIDTH 1
+`define PSRAM_PSCR_WIDTH 8
+`define PSRAM_CMD_WIDTH  16
+`define PSRAM_WAIT_WIDTH 8
+`define PSRAM_CFG_WIDTH  8
 `define PSRAM_STAT_WIDTH 1
 
 `define PSRAM_PSCR_MIN_VAL  {{(`PSRAM_PSCR_WIDTH-2){1'b0}}, 2'd2}
