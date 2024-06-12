@@ -30,16 +30,19 @@ endclass
 
 function PSRAMTest::new(string name, virtual apb4_if.master apb4, virtual psram_if.tb psram);
   super.new("apb4_master", apb4);
-  this.name             = name;
-  this.apb4             = apb4;
-  this.psram            = psram;
+  this.name  = name;
+  this.apb4  = apb4;
+  this.psram = psram;
 endfunction
 
 task automatic PSRAMTest::test_reset_reg();
   super.test_reset_reg();
   // verilog_format: off
-  this.rd_check(`PSRAM_CTRL_ADDR, "CTRL REG", 32'b0 & {`PSRAM_CTRL_WIDTH{1'b1}}, Helper::EQUL, Helper::INFO);
-  this.rd_check(`PSRAM_PSCR_ADDR, "PSCR REG", 32'd2 & {`PSRAM_PSCR_WIDTH{1'b1}}, Helper::EQUL, Helper::INFO);
+  this.rd_check(`PSRAM_CTRL_ADDR, "CTRL REG", 32'd0 & {`PSRAM_CTRL_WIDTH{1'b1}}, Helper::EQUL, Helper::INFO);
+  this.rd_check(`PSRAM_PSCR_ADDR, "PSCR REG", 32'd0 & {`PSRAM_PSCR_WIDTH{1'b1}}, Helper::EQUL, Helper::INFO);
+  this.rd_check(`PSRAM_CMD_ADDR,  "CMD REG",  32'd0 & {`PSRAM_CMD_WIDTH{1'b1}},  Helper::EQUL, Helper::INFO);
+  this.rd_check(`PSRAM_WAIT_ADDR, "WAIT REG", 32'd0 & {`PSRAM_WAIT_WIDTH{1'b1}}, Helper::EQUL, Helper::INFO);
+  this.rd_check(`PSRAM_CFG_ADDR,  "CFG REG",  32'd0 & {`PSRAM_CFG_WIDTH{1'b1}},  Helper::EQUL, Helper::INFO);
   // verilog_format: on
 endtask
 
@@ -48,6 +51,10 @@ task automatic PSRAMTest::test_wr_rd_reg(input bit [31:0] run_times = 1000);
   // verilog_format: off
   for (int i = 0; i < run_times; i++) begin
     this.wr_rd_check(`PSRAM_CTRL_ADDR, "CTRL REG", $random & {`PSRAM_CTRL_WIDTH{1'b1}}, Helper::EQUL);
+    this.wr_rd_check(`PSRAM_PSCR_ADDR, "PSCR REG", $random & {`PSRAM_PSCR_WIDTH{1'b1}}, Helper::EQUL);
+    this.wr_rd_check(`PSRAM_CMD_ADDR,  "CMD REG",  $random & {`PSRAM_CMD_WIDTH{1'b1}},  Helper::EQUL);
+    this.wr_rd_check(`PSRAM_WAIT_ADDR, "WAIT REG", $random & {`PSRAM_WAIT_WIDTH{1'b1}}, Helper::EQUL);
+    this.wr_rd_check(`PSRAM_CFG_ADDR,  "CFG REG",  $random & {`PSRAM_CFG_WIDTH{1'b1}},  Helper::EQUL);
   end
   // verilog_format: on
 endtask
