@@ -39,6 +39,7 @@ program automatic test_top (
 
     psram_hdl.test_reset_reg();
     psram_hdl.test_wr_rd_reg();
+    psram_hdl.test_clk_div();
     Helper::end_banner();
     #20000 $finish;
   end

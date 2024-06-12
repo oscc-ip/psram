@@ -14,6 +14,7 @@ SIM_OPTIONS  := -full64 -debug_acc+all  +v2k -sverilog -timescale=1ns/10ps \
                 -kdb \
 
 SRC_FILE ?=
+SRC_FILE += ../rtl/psram_core.sv
 SRC_FILE += ../rtl/axi4_psram.sv
 SRC_FILE += ../tb/psram_test.sv
 SRC_FILE += ../tb/test_top.sv
