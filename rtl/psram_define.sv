@@ -73,6 +73,9 @@
 `define PSRAM_PSCR_MIN_VAL  {{(`PSRAM_PSCR_WIDTH-2){1'b0}}, 2'd2}
 // verilog_format: on
 
+`define PSRAM_FSM_IDLE 1'b0
+`define PSRAM_FSM_BUSY 1'b1
+
 interface psram_if ();
   logic       psram_sck_o;
   logic       psram_ce_o;

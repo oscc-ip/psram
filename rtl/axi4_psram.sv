@@ -34,13 +34,13 @@ module axi4_psram (
   logic [`PSRAM_STAT_WIDTH-1:0] s_psram_stat_d, s_psram_stat_q;
   logic s_psram_stat_en;
 
-
   assign s_apb4_addr     = apb4.paddr[5:2];
   assign s_apb4_wr_hdshk = apb4.psel && apb4.penable && apb4.pwrite;
   assign s_apb4_rd_hdshk = apb4.psel && apb4.penable && (~apb4.pwrite);
   assign apb4.pready     = 1'b1;
   assign apb4.pslverr    = 1'b0;
 
+  assign psram.irq_o     = 0;
 
   assign s_psram_ctrl_en = s_apb4_wr_hdshk && s_apb4_addr == `PSRAM_CTRL;
   assign s_psram_ctrl_d  = apb4.pwdata[`PSRAM_CTRL_WIDTH-1:0];
@@ -105,4 +105,17 @@ module axi4_psram (
       endcase
     end
   end
+
+  psram_core u_psram_core (
+      .clk_i         (apb4.pclk),
+      .rst_n_i       (apb4.presetn),         // TODO:
+      .pscr_i        (s_psram_pscr_q),
+      .start_i       (1'b1),
+      .done_o        (),
+      .psram_sck_o   (psram.psram_sck_o),
+      .psram_ce_o    (psram.psram_ce_o),
+      .psram_io_en_o (psram.psram_io_en_o),
+      .psram_io_in_i (psram.psram_io_in_i),
+      .psram_io_out_o(psram.psram_io_out_o)
+  );
 endmodule
