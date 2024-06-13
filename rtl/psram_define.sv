@@ -13,9 +13,9 @@
 
 /* register mapping
  * PSRAM_CTRL:
- * BITS:   | 31:1 | 0  |
- * FIELDS: | RES  | EN |
- * PERMS:  | NONE | RW |
+ * BITS:   | 31:4 | 3:2 | 1    | 0  |
+ * FIELDS: | RES  | SWM | CFLG | EN |
+ * PERMS:  | NONE | RW  | RW   | RW |
  * ----------------------------------------------------
  * PSRAM_PSCR:
  * BITS:   | 31:8 | 7:0  |
@@ -38,9 +38,9 @@
  * PERMS:  | NONE | RW  |
  * -----------------------------------------------------
  * PSRAM_STAT:
- * BITS:   | 31:1 | 0    |
- * FIELDS: | RES  | OVIF |
- * PERMS:  | NONE | RO   |
+ * BITS:   | 31:2 | 1:0 |
+ * FIELDS: | RES  | CRM |
+ * PERMS:  | NONE | RO  |
  * -----------------------------------------------------
 */
 
@@ -63,15 +63,20 @@
 `define PSRAM_CFG_ADDR  {26'b0, `PSRAM_CFG,  2'b00}
 `define PSRAM_STAT_ADDR {26'b0, `PSRAM_STAT, 2'b00}
 
-`define PSRAM_CTRL_WIDTH 1
+`define PSRAM_CTRL_WIDTH 4
 `define PSRAM_PSCR_WIDTH 8
 `define PSRAM_CMD_WIDTH  16
 `define PSRAM_WAIT_WIDTH 8
 `define PSRAM_CFG_WIDTH  8
-`define PSRAM_STAT_WIDTH 1
+`define PSRAM_STAT_WIDTH 2
 
 `define PSRAM_PSCR_MIN_VAL  {{(`PSRAM_PSCR_WIDTH-2){1'b0}}, 2'd2}
 // verilog_format: on
+
+`define PSRAM_MODE_SPI  2'b00
+`define PSRAM_MODE_QSPI 2'b01
+`define PSRAM_MODE_QPI  2'b10
+`define PSRAM_MODE_OPI  2'b11
 
 `define PSRAM_FSM_IDLE 1'b0
 `define PSRAM_FSM_BUSY 1'b1
