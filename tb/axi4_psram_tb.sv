@@ -12,7 +12,7 @@
 `include "psram_define.sv"
 
 module axi4_psram_tb ();
-  localparam CLK_PEROID = 10;
+  localparam CLK_PEROID = 5;
   logic rst_n_i, clk_i;
 
   initial begin
