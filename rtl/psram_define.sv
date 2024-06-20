@@ -28,9 +28,9 @@
  * PERMS:  | NONE  | RW   | RW  |
  * -----------------------------------------------------
  * PSRAM_WAIT:
- * BITS:   | 31:8 | 7:0  |
- * FIELDS: | RES  | WAIT |
- * PERMS:  | NONE | RW   |
+ * BITS:   | 31:8 | 15:8 | 7:0 |
+ * FIELDS: | RES  | RDW  | WRW |
+ * PERMS:  | NONE | RW   | RW  |
  * -----------------------------------------------------
  * PSRAM_CFG:
  * BITS:   | 31:8 | 7:0 |
