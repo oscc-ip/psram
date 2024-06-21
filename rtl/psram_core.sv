@@ -33,16 +33,13 @@ module psram_core (
     input  logic                         rst_n_i,
     input  logic                         en_i,
     input  logic                         cflg_i,
-    input  logic [                  1:0] swm_i,
-    output logic [                  1:0] crm_o,
     input  logic [`PSRAM_PSCR_WIDTH-1:0] pscr_i,
     input  logic [                  7:0] wr_cmd_i,
     input  logic [                  7:0] rd_cmd_i,
     input  logic [                  7:0] cfg_cmd_i,
-    input  logic [`PSRAM_WAIT_WIDTH-1:0] wait_i,
-    input  logic                         tx_valid_i,
-    output logic                         tx_ready_o,
-    input  logic [                 63:0] tx_data_i,
+    input  logic [                  7:0] wrw_i,
+    input  logic [                  7:0] rdw_i,
+    output logic [                  1:0] crm_o,
     output logic                         done_o,
     output logic                         psram_sck_o,
     output logic                         psram_ce_o,
@@ -55,7 +52,7 @@ module psram_core (
   logic s_ce_d, s_ce_q, s_sck_d, s_sck_q;
   logic [`PSRAM_PSCR_WIDTH-1:0] s_cnt_d, s_cnt_q;
 
-  assign crm_o       = `PSRAM_MODE_OPI; // TODO: only support OPI mode now
+  assign crm_o       = `PSRAM_MODE_OPI;  // only support OPI mode now
   assign done_o      = 1'b0;
   assign psram_ce_o  = s_ce_q;
   assign psram_sck_o = s_sck_q;
@@ -63,7 +60,7 @@ module psram_core (
   always_comb begin
     s_fsm_d = s_fsm_q;
     unique case (s_fsm_q)
-      `PSRAM_FSM_IDLE: if (tx_valid_i && en_i) s_fsm_d = `PSRAM_FSM_BUSY;
+      `PSRAM_FSM_IDLE: if (1'b1 && en_i) s_fsm_d = `PSRAM_FSM_BUSY;
       `PSRAM_FSM_BUSY: if (done_o) s_fsm_d = `PSRAM_FSM_IDLE;
     endcase
   end
@@ -112,6 +109,11 @@ module psram_core (
       s_sck_q
   );
 
+  // wait_start = 2 + 4 // cmd(rise-fall edge) + addr
+  // data_start = wait_start + wr ? wr_wait_states * 2 : rd_wait_states
+
+  // if count < 2                data <- cmd
+  // else if count < wait_start  data <- addr[]
 
   // // The transaction counter
   // wire [7:0] wait_start = (~qpi ? 8 : 2)  // The command 

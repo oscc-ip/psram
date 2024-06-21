@@ -24,7 +24,7 @@
  * -----------------------------------------------------
  * PSRAM_CMD:
  * BITS:   | 31:16 | 15:8 | 7:0 |
- * FIELDS: | RES   | RD   | WR  |
+ * FIELDS: | RES   | RDC  | WRC |
  * PERMS:  | NONE  | RW   | RW  |
  * -----------------------------------------------------
  * PSRAM_WAIT:
@@ -66,7 +66,7 @@
 `define PSRAM_CTRL_WIDTH 4
 `define PSRAM_PSCR_WIDTH 8
 `define PSRAM_CMD_WIDTH  16
-`define PSRAM_WAIT_WIDTH 8
+`define PSRAM_WAIT_WIDTH 16
 `define PSRAM_CFG_WIDTH  8
 `define PSRAM_STAT_WIDTH 2
 

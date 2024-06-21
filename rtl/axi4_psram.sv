@@ -9,19 +9,17 @@
 // See the Mulan PSL v2 for more details.
 
 `include "register.sv"
-`include "fifo.sv"
 `include "axi4_define.sv"
+`include "axi4_slv_fsm.sv"
 `include "psram_define.sv"
 
 module axi4_psram #(
-    parameter int FIFO_DEPTH = 32
+    parameter int USR_ADDR_SIZE = 64 * 1024 * 1024
 ) (
     apb4_if.slave apb4,
-    // axi4_if.master axi4,
+    axi4_if.slave axi4,
     psram_if.dut  psram
 );
-
-  localparam int LOG_FIFO_DEPTH = $clog2(FIFO_DEPTH);
 
   logic [3:0] s_apb4_addr;
   logic s_apb4_wr_hdshk, s_apb4_rd_hdshk;
@@ -40,15 +38,10 @@ module axi4_psram #(
   // bitfield
   logic s_bit_en, s_bit_cflg;
   logic [1:0] s_bit_swm;
-  logic [7:0] s_bit_wr_cmd, s_bit_rd_cmd;
+  logic [7:0] s_bit_wrc, s_bit_rdc;
+  logic [7:0] s_bit_wrw, s_bit_rdw;
   //
-  logic s_crm;
-  // fifo
-  logic s_tx_push_valid, s_tx_push_ready, s_tx_empty, s_tx_full, s_tx_pop_valid, s_tx_pop_ready;
-  logic s_rx_push_valid, s_rx_push_ready, s_rx_empty, s_rx_full, s_rx_pop_valid, s_rx_pop_ready;
-  logic [63:0] s_tx_push_data, s_tx_pop_data, s_rx_push_data, s_rx_pop_data;
-  logic [LOG_FIFO_DEPTH:0] s_tx_elem, s_rx_elem;
-
+  logic [1:0] s_crm;
 
   assign s_apb4_addr     = apb4.paddr[5:2];
   assign s_apb4_wr_hdshk = apb4.psel && apb4.penable && apb4.pwrite;
@@ -59,8 +52,10 @@ module axi4_psram #(
   assign s_bit_en        = s_psram_ctrl_q[0];
   assign s_bit_cflg      = s_psram_ctrl_q[1];
   assign s_bit_swm       = s_psram_ctrl_q[3:2];
-  assign s_bit_wr_cmd    = s_psram_cmd_q[7:0];
-  assign s_bit_rd_cmd    = s_psram_cmd_q[15:8];
+  assign s_bit_wrc       = s_psram_cmd_q[7:0];
+  assign s_bit_rdc       = s_psram_cmd_q[15:8];
+  assign s_bit_wrw       = s_psram_wait_q[7:0];
+  assign s_bit_rdw       = s_psram_wait_q[15:8];
 
   assign psram.irq_o     = 0;
 
@@ -137,40 +132,80 @@ module axi4_psram #(
     end
   end
 
-
-  assign s_tx_push_ready = ~s_tx_full;
-  assign s_tx_pop_valid  = ~s_tx_empty;
-  fifo #(
-      .DATA_WIDTH  (64),
-      .BUFFER_DEPTH(FIFO_DEPTH)
-  ) u_tx_fifo (
-      .clk_i  (apb4.pclk),
-      .rst_n_i(apb4.presetn),
-      .flush_i(~s_bit_en),
-      .cnt_o  (s_tx_elem),
-      .push_i (s_tx_push_valid),
-      .full_o (s_tx_full),
-      .dat_i  (s_tx_push_data),
-      .pop_i  (s_tx_pop_ready),
-      .empty_o(s_tx_empty),
-      .dat_o  (s_tx_pop_data)
+  axi4_slv_fsm #(
+      .USR_ADDR_SIZE(USR_ADDR_SIZE)
+  ) u_axi4_slv_fsm (
+      .aclk           (axi4.aclk),
+      .aresetn        (axi4.aresetn),
+      .awid           (axi4.awid),
+      .awaddr         (axi4.awaddr),
+      .awlen          (axi4.awlen),
+      .awsize         (axi4.awsize),
+      .awburst        (axi4.awburst),
+      .awlock         (axi4.awlock),
+      .awcache        (axi4.awcache),
+      .awprot         (axi4.awprot),
+      .awqos          (axi4.awqos),
+      .awregion       (axi4.awregion),
+      .awuser         (axi4.awuser),
+      .awvalid        (axi4.awvalid),
+      .awready        (axi4.awready),
+      .wdata          (axi4.wdata),
+      .wstrb          (axi4.wstrb),
+      .wlast          (axi4.wlast),
+      .wuser          (axi4.wuser),
+      .wvalid         (axi4.wvalid),
+      .wready         (axi4.wready),
+      .bid            (axi4.bid),
+      .bresp          (axi4.bresp),
+      .buser          (axi4.buser),
+      .bvalid         (axi4.bvalid),
+      .bready         (axi4.bready),
+      .arid           (axi4.arid),
+      .araddr         (axi4.araddr),
+      .arlen          (axi4.arlen),
+      .arsize         (axi4.arsize),
+      .arburst        (axi4.arburst),
+      .arlock         (axi4.arlock),
+      .arcache        (axi4.arcache),
+      .arprot         (axi4.arprot),
+      .arqos          (axi4.arqos),
+      .arregion       (axi4.arregion),
+      .aruser         (axi4.aruser),
+      .arvalid        (axi4.arvalid),
+      .arready        (axi4.arready),
+      .rid            (axi4.rid),
+      .rdata          (axi4.rdata),
+      .rresp          (axi4.rresp),
+      .rlast          (axi4.rlast),
+      .ruser          (axi4.ruser),
+      .rvalid         (axi4.rvalid),
+      .rready         (axi4.rready),
+      .s_usr_en_o     (),
+      .s_usr_wen_o    (),
+      .s_usr_addr_o   (),
+      .s_usr_bm_i     (),
+      .s_usr_dat_i    (),
+      .s_usr_awready_i(),
+      .s_usr_wready_i (),
+      .s_usr_bvalid_i (),
+      .s_usr_arready_i(),
+      .s_usr_rvalid_i (),
+      .s_usr_dat_o    ()
   );
 
   psram_core u_psram_core (
       .clk_i         (apb4.pclk),
-      .rst_n_i       (apb4.presetn),         // TODO:
+      .rst_n_i       (apb4.presetn),
       .en_i          (s_bit_en),
       .cflg_i        (s_bit_cflg),
-      .swm_i         (s_bit_swm),
-      .crm_o         (s_crm),
       .pscr_i        (s_psram_pscr_q),
-      .wr_cmd_i      (s_bit_wr_cmd),
-      .rd_cmd_i      (s_bit_rd_cmd),
+      .wr_cmd_i      (s_bit_wrc),
+      .rd_cmd_i      (s_bit_rdc),
       .cfg_cmd_i     (s_psram_cfg_q),
-      .wait_i        (s_psram_wait_q),
-      .tx_valid_i    (s_tx_pop_valid),
-      .tx_ready_o    (s_tx_pop_ready),
-      .tx_data_i     (s_tx_pop_data),
+      .wrw_i         (s_bit_wrw),
+      .rdw_i         (s_bit_rdw),
+      .crm_o         (s_crm),
       .done_o        (),
       .psram_sck_o   (psram.psram_sck_o),
       .psram_ce_o    (psram.psram_ce_o),
