@@ -61,12 +61,13 @@ endtask
 
 task automatic PSRAMTest::test_clk_div(input bit [31:0] run_times = 10);
   $display("=== [test psram clk div] ===");
+  this.write(`PSRAM_CTRL_ADDR, 32'b0);
   repeat (200) @(posedge this.apb4.pclk);
   this.write(`PSRAM_PSCR_ADDR, 32'd0 & {`PSRAM_PSCR_WIDTH{1'b1}});
-  repeat (200) @(posedge this.apb4.pclk);
+  repeat (400) @(posedge this.apb4.pclk);
   this.write(`PSRAM_PSCR_ADDR, 32'd1 & {`PSRAM_PSCR_WIDTH{1'b1}});
-  repeat (200) @(posedge this.apb4.pclk);
-  this.write(`PSRAM_PSCR_ADDR, 32'd2 & {`PSRAM_PSCR_WIDTH{1'b1}});
+  this.write(`PSRAM_CTRL_ADDR, 32'b1);
+  // this.write(`psram)
 endtask
 
 `endif
