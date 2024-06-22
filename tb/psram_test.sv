@@ -25,7 +25,7 @@ class PSRAMTest extends APB4Master;
                       virtual psram_if.tb psram);
   extern task automatic test_reset_reg();
   extern task automatic test_wr_rd_reg(input bit [31:0] run_times = 1000);
-  extern task automatic test_clk_div(input bit [31:0] run_times = 10);
+  extern task automatic test_cfg_wr(input bit [31:0] run_times = 10);
 endclass
 
 function PSRAMTest::new(string name, virtual apb4_if.master apb4, virtual psram_if.tb psram);
@@ -59,8 +59,8 @@ task automatic PSRAMTest::test_wr_rd_reg(input bit [31:0] run_times = 1000);
   // verilog_format: on
 endtask
 
-task automatic PSRAMTest::test_clk_div(input bit [31:0] run_times = 10);
-  $display("=== [test psram clk div] ===");
+task automatic PSRAMTest::test_cfg_wr(input bit [31:0] run_times = 10);
+  $display("=== [test psram cfg wr] ===");
   this.write(`PSRAM_CTRL_ADDR, 32'b0);
   repeat (200) @(posedge this.apb4.pclk);
   this.write(`PSRAM_PSCR_ADDR, 32'd0 & {`PSRAM_PSCR_WIDTH{1'b1}});
