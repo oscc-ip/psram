@@ -37,7 +37,7 @@ module axi4_psram #(
 
   // bitfield
   logic s_bit_en, s_bit_cflg;
-  logic [1:0] s_bit_swm;
+  logic [7:0] s_bit_ma;
   logic [7:0] s_bit_wrc, s_bit_rdc;
   logic [7:0] s_bit_wrw, s_bit_rdw;
   logic [7:0] s_bit_wrf, s_bit_rdf;
@@ -54,7 +54,7 @@ module axi4_psram #(
 
   assign s_bit_en        = s_psram_ctrl_q[0];
   assign s_bit_cflg      = s_psram_ctrl_q[1];
-  assign s_bit_swm       = s_psram_ctrl_q[3:2];
+  assign s_bit_ma        = s_psram_ctrl_q[9:2];
   assign s_bit_wrc       = s_psram_cmd_q[7:0];
   assign s_bit_rdc       = s_psram_cmd_q[15:8];
   assign s_bit_wrw       = s_psram_wait_q[7:0];
@@ -206,6 +206,7 @@ module axi4_psram #(
       .rst_n_i       (axi4.aresetn),
       .en_i          (s_bit_en),
       .cflg_i        (s_bit_cflg),
+      .ma_i          (s_bit_ma),
       .pscr_i        (s_psram_pscr_q),
       .wrc_i         (s_bit_wrc),
       .rdc_i         (s_bit_rdc),

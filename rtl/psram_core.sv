@@ -26,6 +26,7 @@
 // MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 // See the Mulan PSL v2 for more details.
 
+`include "shift_reg.sv"
 `include "psram_define.sv"
 
 module psram_core (
@@ -33,6 +34,7 @@ module psram_core (
     input  logic                         rst_n_i,
     input  logic                         en_i,
     input  logic                         cflg_i,
+    input  logic [                  7:0] ma_i,
     input  logic [`PSRAM_PSCR_WIDTH-1:0] pscr_i,
     input  logic [                  7:0] wrc_i,
     input  logic [                  7:0] rdc_i,
@@ -56,16 +58,20 @@ module psram_core (
   logic s_fsm_d, s_fsm_q;
   logic s_ce_d, s_ce_q, s_sck_d, s_sck_q;
   logic [`PSRAM_PSCR_WIDTH-1:0] s_cnt_d, s_cnt_q;
+  logic s_start_trans;
+  logic [7:0] s_wr_wait, s_rd_wait, s_trans_cnt_d, s_trans_cnt_q, s_trans_limit;
+  logic [47:0] s_cmd_addr;
 
-  assign crm_o       = `PSRAM_MODE_OPI;  // only support OPI mode now
-  assign done_o      = 1'b0;
-  assign psram_ce_o  = s_ce_q;
-  assign psram_sck_o = s_sck_q;
+  assign crm_o         = `PSRAM_MODE_OPI;  // only support OPI mode now
+  assign psram_ce_o    = s_ce_q;
+  assign psram_sck_o   = s_sck_q;
+
+  assign s_start_trans = cflg_i && (cfg_wr_i | cfg_rd_i);  // TODO: for axi4 wr/rd
 
   always_comb begin
     s_fsm_d = s_fsm_q;
     unique case (s_fsm_q)
-      `PSRAM_FSM_IDLE: if (1'b1 && en_i) s_fsm_d = `PSRAM_FSM_BUSY;
+      `PSRAM_FSM_IDLE: if (en_i && s_start_trans) s_fsm_d = `PSRAM_FSM_BUSY;
       `PSRAM_FSM_BUSY: if (done_o) s_fsm_d = `PSRAM_FSM_IDLE;
     endcase
   end
@@ -81,7 +87,7 @@ module psram_core (
     if (done_o) s_ce_d = 1'b1;
     else if (s_fsm_q == `PSRAM_FSM_BUSY) s_ce_d = 1'b0;
   end
-  dffrh #(1) u_ce_dffr (
+  dffrh #(1) u_ce_dffrh (
       clk_i,
       rst_n_i,
       s_ce_d,
@@ -114,6 +120,55 @@ module psram_core (
       s_sck_q
   );
 
+  assign s_wr_wait = cflg_i ? 8'd2 : '0;
+  assign s_rd_wait = cflg_i ? rdw_i * 2 : '0;
+
+  always_comb begin
+    s_cmd_addr = '0;
+    if (cflg_i) begin
+      if (cfg_wr_i) s_cmd_addr = {wrf_i, wrf_i, 24'd0, ma_i};
+      else if (cfg_rd_i) s_cmd_addr = {rdf_i, rdf_i, 24'd0, ma_i};
+    end
+  end
+
+  assign psram_io_en_o = '0;  // TODO: output
+
+  shift_reg #(
+      .DATA_WIDTH(48),
+      .SHIFT_NUM (8)
+  ) u_psram_tx_shift_reg (
+      .clk_i     (clk_i),
+      .rst_n_i   (rst_n_i),
+      .type_i    (`SHIFT_REG_TYPE_LOGIC),
+      .dir_i     ('0),
+      .ld_en_i   (cfg_wr_i | cfg_rd_i),
+      .sft_en_i  ('1),
+      .ser_dat_i ('0),
+      .par_data_i(s_cmd_addr),
+      .ser_dat_o (psram_io_out_o),
+      .par_data_o()
+  );
+
+  assign done_o = s_trans_cnt_q == s_trans_limit;
+  always_comb begin
+    s_trans_limit = '0;
+    if (cflg_i) begin
+      if (cfg_wr_i) s_trans_limit = 8'd6 + s_wr_wait;
+      else if (cfg_rd_i) s_trans_limit = 8'd6 + s_rd_wait;
+    end
+  end
+
+  always_comb begin
+    s_trans_cnt_d = s_trans_cnt_q;
+    if (s_trans_cnt_q == s_trans_limit) s_trans_cnt_d = '0;
+    else s_trans_cnt_d = s_trans_cnt_q + 1'b1;
+  end
+  dffr #(8) u_s_trans_cnt_dffr (
+      clk_i,
+      rst_n_i,
+      s_trans_cnt_d,
+      s_trans_cnt_q
+  );
   // wait_start = 2 + 4 // cmd(rise-fall edge) + addr
   // data_start = wait_start + wr ? wr_wait_states * 2 : rd_wait_states
 

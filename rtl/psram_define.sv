@@ -13,9 +13,9 @@
 
 /* register mapping
  * PSRAM_CTRL:
- * BITS:   | 31:4 | 3:2 | 1    | 0  |
- * FIELDS: | RES  | SWM | CFLG | EN |
- * PERMS:  | NONE | RW  | RW   | RW |
+ * BITS:   | 31:10 | 9:2 | 1    | 0  |
+ * FIELDS: | RES   | MA  | CFLG | EN |
+ * PERMS:  | NONE  | RW  | RW   | RW |
  * ----------------------------------------------------
  * PSRAM_PSCR:
  * BITS:   | 31:8 | 7:0  |
@@ -70,7 +70,7 @@
 `define PSRAM_DATA_ADDR {26'b0, `PSRAM_DATA, 2'b00}
 `define PSRAM_STAT_ADDR {26'b0, `PSRAM_STAT, 2'b00}
 
-`define PSRAM_CTRL_WIDTH 4
+`define PSRAM_CTRL_WIDTH 10
 `define PSRAM_PSCR_WIDTH 8
 `define PSRAM_CMD_WIDTH  16
 `define PSRAM_WAIT_WIDTH 16
