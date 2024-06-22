@@ -40,8 +40,11 @@ module axi4_psram #(
   logic [1:0] s_bit_swm;
   logic [7:0] s_bit_wrc, s_bit_rdc;
   logic [7:0] s_bit_wrw, s_bit_rdw;
-  //
+  logic [7:0] s_bit_wrf, s_bit_rdf;
+  // other
+  logic       s_done;
   logic [1:0] s_crm;
+  logic [7:0] s_cfg_rd_data;
 
   assign s_apb4_addr     = apb4.paddr[5:2];
   assign s_apb4_wr_hdshk = apb4.psel && apb4.penable && apb4.pwrite;
@@ -56,6 +59,8 @@ module axi4_psram #(
   assign s_bit_rdc       = s_psram_cmd_q[15:8];
   assign s_bit_wrw       = s_psram_wait_q[7:0];
   assign s_bit_rdw       = s_psram_wait_q[15:8];
+  assign s_bit_wrf       = s_psram_cfg_q[7:0];
+  assign s_bit_rdf       = s_psram_cfg_q[15:8];
 
   assign psram.irq_o     = 0;
 
@@ -109,6 +114,7 @@ module axi4_psram #(
       s_psram_cfg_q
   );
 
+  assign s_psram_stat_d[2]   = s_done;
   assign s_psram_stat_d[1:0] = s_crm;
   dffr #(`PSRAM_STAT_WIDTH) u_psram_stat_dffr (
       apb4.pclk,
@@ -126,6 +132,7 @@ module axi4_psram #(
         `PSRAM_CMD:  apb4.prdata[`PSRAM_CMD_WIDTH-1:0] = s_psram_cmd_q;
         `PSRAM_WAIT: apb4.prdata[`PSRAM_WAIT_WIDTH-1:0] = s_psram_wait_q;
         `PSRAM_CFG:  apb4.prdata[`PSRAM_CFG_WIDTH-1:0] = s_psram_cfg_q;
+        `PSRAM_DATA: apb4.prdata[`PSRAM_DATA_WIDTH-1:0] = s_cfg_rd_data;
         `PSRAM_STAT: apb4.prdata[`PSRAM_STAT_WIDTH-1:0] = s_psram_stat_q;
         default:     apb4.prdata = '0;
       endcase
@@ -195,18 +202,23 @@ module axi4_psram #(
   );
 
   psram_core u_psram_core (
-      .clk_i         (apb4.pclk),
-      .rst_n_i       (apb4.presetn),
+      .clk_i         (axi4.aclk),
+      .rst_n_i       (axi4.aresetn),
       .en_i          (s_bit_en),
       .cflg_i        (s_bit_cflg),
       .pscr_i        (s_psram_pscr_q),
-      .wr_cmd_i      (s_bit_wrc),
-      .rd_cmd_i      (s_bit_rdc),
-      .cfg_cmd_i     (s_psram_cfg_q),
+      .wrc_i         (s_bit_wrc),
+      .rdc_i         (s_bit_rdc),
       .wrw_i         (s_bit_wrw),
       .rdw_i         (s_bit_rdw),
+      .wrf_i         (s_bit_wrf),
+      .rdf_i         (s_bit_rdf),
+      .cfg_wr_i      (s_apb4_wr_hdshk && s_apb4_addr == `PSRAM_DATA),
+      .cfg_rd_i      (s_apb4_rd_hdshk && s_apb4_addr == `PSRAM_DATA),
+      .cfg_data_i    (apb4.pwdata[7:0]),
+      .cfg_data_o    (s_cfg_rd_data),
       .crm_o         (s_crm),
-      .done_o        (),
+      .done_o        (s_done),
       .psram_sck_o   (psram.psram_sck_o),
       .psram_ce_o    (psram.psram_ce_o),
       .psram_io_en_o (psram.psram_io_en_o),

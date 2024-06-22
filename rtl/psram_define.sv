@@ -33,14 +33,19 @@
  * PERMS:  | NONE | RW   | RW  |
  * -----------------------------------------------------
  * PSRAM_CFG:
- * BITS:   | 31:8 | 7:0 |
- * FIELDS: | RES  | CFG |
- * PERMS:  | NONE | RW  |
+ * BITS:   | 31:8 | 15:8 | 7:0 |
+ * FIELDS: | RES  | RDF  | WRF |
+ * PERMS:  | NONE | RW   | RW  |
+ * -----------------------------------------------------
+ * PSRAM_DATA(shadow):
+ * BITS:   | 31:8 | 7:0  |
+ * FIELDS: | RES  | DATA |
+ * PERMS:  | NONE | RW   |
  * -----------------------------------------------------
  * PSRAM_STAT:
- * BITS:   | 31:2 | 1:0 |
- * FIELDS: | RES  | CRM |
- * PERMS:  | NONE | RO  |
+ * BITS:   | 31:2 | 2    | 1:0 |
+ * FIELDS: | RES  | DONE | CRM |
+ * PERMS:  | NONE | RO   | RO  |
  * -----------------------------------------------------
 */
 
@@ -54,21 +59,24 @@
 `define PSRAM_CMD  4'b0010 // BASEADDR + 0x08
 `define PSRAM_WAIT 4'b0011 // BASEADDR + 0x0C
 `define PSRAM_CFG  4'b0100 // BASEADDR + 0x10
-`define PSRAM_STAT 4'b0101 // BASEADDR + 0x14
+`define PSRAM_DATA 4'b0101 // BASEADDR + 0x14
+`define PSRAM_STAT 4'b0110 // BASEADDR + 0x18
 
 `define PSRAM_CTRL_ADDR {26'b0, `PSRAM_CTRL, 2'b00}
 `define PSRAM_PSCR_ADDR {26'b0, `PSRAM_PSCR, 2'b00}
 `define PSRAM_CMD_ADDR  {26'b0, `PSRAM_CMD , 2'b00}
 `define PSRAM_WAIT_ADDR {26'b0, `PSRAM_WAIT, 2'b00}
 `define PSRAM_CFG_ADDR  {26'b0, `PSRAM_CFG,  2'b00}
+`define PSRAM_DATA_ADDR {26'b0, `PSRAM_DATA, 2'b00}
 `define PSRAM_STAT_ADDR {26'b0, `PSRAM_STAT, 2'b00}
 
 `define PSRAM_CTRL_WIDTH 4
 `define PSRAM_PSCR_WIDTH 8
 `define PSRAM_CMD_WIDTH  16
 `define PSRAM_WAIT_WIDTH 16
-`define PSRAM_CFG_WIDTH  8
-`define PSRAM_STAT_WIDTH 2
+`define PSRAM_CFG_WIDTH  16
+`define PSRAM_DATA_WIDTH 8
+`define PSRAM_STAT_WIDTH 3
 
 `define PSRAM_PSCR_MIN_VAL  {{(`PSRAM_PSCR_WIDTH-2){1'b0}}, 2'd2}
 // verilog_format: on
