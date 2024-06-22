@@ -61,12 +61,15 @@ endtask
 
 task automatic PSRAMTest::test_cfg_wr(input bit [31:0] run_times = 10);
   $display("=== [test psram cfg wr] ===");
+  repeat (400*2) @(posedge this.apb4.pclk);
   this.write(`PSRAM_CTRL_ADDR, 32'b0);
-  repeat (200) @(posedge this.apb4.pclk);
-  this.write(`PSRAM_PSCR_ADDR, 32'd0 & {`PSRAM_PSCR_WIDTH{1'b1}});
-  repeat (400) @(posedge this.apb4.pclk);
-  this.write(`PSRAM_PSCR_ADDR, 32'd1 & {`PSRAM_PSCR_WIDTH{1'b1}});
-  this.write(`PSRAM_CTRL_ADDR, 32'b1);
+  this.write(`PSRAM_PSCR_ADDR, 32'd0 & {`PSRAM_PSCR_WIDTH{1'b1}});  // div 2
+  this.write(`PSRAM_WAIT_ADDR, 32'h0501);
+  this.write(`PSRAM_CFG_ADDR, 32'h40C0);
+  this.write(`PSRAM_CTRL_ADDR, 32'b1000_1_1);  // MA: 8 CFLG: 1 EN: 1
+  this.write(`PSRAM_DATA_ADDR, 8'd32);
+  repeat (400 * 3) @(posedge this.apb4.pclk);
+
   // this.write(`psram)
 endtask
 
