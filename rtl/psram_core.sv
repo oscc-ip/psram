@@ -29,6 +29,7 @@
 `include "shift_reg.sv"
 `include "psram_define.sv"
 
+// clk_i/psram_sck_o = 4
 module psram_core (
     input  logic                         clk_i,
     input  logic                         rst_n_i,
@@ -57,9 +58,9 @@ module psram_core (
 
   logic s_fsm_d, s_fsm_q;
   logic s_ce_d, s_ce_q, s_sck_d, s_sck_q;
-  logic [`PSRAM_PSCR_WIDTH-1:0] s_cnt_d, s_cnt_q;
+  logic [7:0] s_cnt_d, s_cnt_q;
   logic s_start_trans;
-  logic [7:0] s_wr_wait, s_rd_wait, s_trans_cnt_d, s_trans_cnt_q, s_trans_limit;
+  logic [7:0] s_wr_wait, s_rd_wait, s_trans_cnt_d, s_trans_cnt_q, s_trans_limit_d, s_trans_limit_q;
   logic [47:0] s_cmd_addr;
 
   assign crm_o         = `PSRAM_MODE_OPI;  // only support OPI mode now
@@ -142,30 +143,37 @@ module psram_core (
       .type_i    (`SHIFT_REG_TYPE_LOGIC),
       .dir_i     ('0),
       .ld_en_i   (cfg_wr_i | cfg_rd_i),
-      .sft_en_i  ('1),
+      .sft_en_i  ((~s_ce_q) & (s_cnt_q == 8'd1)),
       .ser_dat_i ('0),
       .par_data_i(s_cmd_addr),
       .ser_dat_o (psram_io_out_o),
       .par_data_o()
   );
 
-  assign done_o = s_trans_cnt_q == s_trans_limit;
+  assign done_o = s_trans_cnt_q == s_trans_limit_q;
   always_comb begin
-    s_trans_limit = '0;
+    s_trans_limit_d = s_trans_limit_q;
     if (cflg_i) begin
-      if (cfg_wr_i) s_trans_limit = 8'd6 + s_wr_wait;
-      else if (cfg_rd_i) s_trans_limit = 8'd6 + s_rd_wait;
+      if (cfg_wr_i) s_trans_limit_d = 8'd6 + s_wr_wait;
+      else if (cfg_rd_i) s_trans_limit_d = 8'd6 + s_rd_wait;
     end
   end
+  dffr #(8) u_trans_limit_dffr (
+      clk_i,
+      rst_n_i,
+      s_trans_limit_d,
+      s_trans_limit_q
+  );
 
   always_comb begin
     s_trans_cnt_d = s_trans_cnt_q;
-    if (s_trans_cnt_q == s_trans_limit) s_trans_cnt_d = '0;
+    if (s_trans_cnt_q == s_trans_limit_q) s_trans_cnt_d = '0;
     else s_trans_cnt_d = s_trans_cnt_q + 1'b1;
   end
-  dffr #(8) u_s_trans_cnt_dffr (
+  dffer #(8) u_trans_cnt_dffer (
       clk_i,
       rst_n_i,
+      (~s_ce_q) & (s_cnt_q == 8'd1),
       s_trans_cnt_d,
       s_trans_cnt_q
   );
