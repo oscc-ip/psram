@@ -61,7 +61,7 @@ module psram_core (
   logic [7:0] s_cnt_d, s_cnt_q;
   logic s_start_trans;
   logic [7:0] s_wr_wait, s_rd_wait, s_trans_cnt_d, s_trans_cnt_q, s_trans_limit_d, s_trans_limit_q;
-  logic [47:0] s_cmd_addr;
+  logic [55:0] s_cmd_addr;
 
   assign crm_o         = `PSRAM_MODE_OPI;  // only support OPI mode now
   assign psram_ce_o    = s_ce_q;
@@ -127,15 +127,19 @@ module psram_core (
   always_comb begin
     s_cmd_addr = '0;
     if (cflg_i) begin
-      if (cfg_wr_i) s_cmd_addr = {wrf_i, wrf_i, 24'd0, ma_i};
+      if (cfg_wr_i) s_cmd_addr = {wrf_i, wrf_i, 24'd0, ma_i, cfg_data_i};
       else if (cfg_rd_i) s_cmd_addr = {rdf_i, rdf_i, 24'd0, ma_i};
     end
   end
 
-  assign psram_io_en_o = '0;  // TODO: output
+  always_comb begin
+    psram_io_en_o = '0; // TODO: for normal wr rd oper
+    if (cfg_wr_i) psram_io_en_o = '0;
+    else if (cfg_rd_i) psram_io_en_o = '1;
+  end
 
   shift_reg #(
-      .DATA_WIDTH(48),
+      .DATA_WIDTH(56),
       .SHIFT_NUM (8)
   ) u_psram_tx_shift_reg (
       .clk_i     (clk_i),

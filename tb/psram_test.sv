@@ -67,7 +67,7 @@ task automatic PSRAMTest::test_cfg_wr(input bit [31:0] run_times = 10);
   this.write(`PSRAM_WAIT_ADDR, 32'h0501);
   this.write(`PSRAM_CFG_ADDR, 32'h40C0);
   this.write(`PSRAM_CTRL_ADDR, 32'b1000_1_1);  // MA: 8 CFLG: 1 EN: 1
-  this.write(`PSRAM_DATA_ADDR, 8'd32);
+  this.write(`PSRAM_DATA_ADDR, 8'h32);
   repeat (400 * 3) @(posedge this.apb4.pclk);
 
   // this.write(`psram)
