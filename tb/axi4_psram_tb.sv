@@ -10,11 +10,15 @@
 
 `include "apb4_if.sv"
 `include "axi4_if.sv"
+`include "gpio_pad.sv"
 `include "psram_define.sv"
 
 module axi4_psram_tb ();
-  localparam real CLK_PEROID = 10; // just for test
+  localparam real CLK_PEROID = 10;  // just for test
   logic rst_n_i, clk_i;
+
+  wire s_psram_sck_pad, s_psram_ce_pad, s_psram_dqs_pad;
+  wire [7:0] s_psram_io_pad;
 
   initial begin
     clk_i = 1'b0;
@@ -45,6 +49,41 @@ module axi4_psram_tb ();
 
   psram_if u_psram_if ();
 
+
+  tri_pd_pad_h u_psram_sck_pad (
+      .i_i   (u_psram_if.psram_sck_o),
+      .oen_i (1'b0),
+      .ren_i (),
+      .c_o   (),
+      .pad_io(s_psram_sck_pad)
+  );
+
+  tri_pd_pad_h u_psram_ce_pad (
+      .i_i   (u_psram_if.psram_ce_o),
+      .oen_i (1'b0),
+      .ren_i (),
+      .c_o   (),
+      .pad_io(s_psram_ce_pad)
+  );
+
+  tri_pd_pad_h u_psram_dqs_pad (
+      .i_i   (u_psram_if.psram_dqs_out_o),
+      .oen_i (u_psram_if.psram_dqs_en_o),
+      .ren_i (),
+      .c_o   (u_psram_if.psram_dqs_in_i),
+      .pad_io(s_psram_sck_pad)
+  );
+
+  for (genvar i = 0; i < 8; i++) begin : PSRAM_TB_PAD_BLOCK
+    tri_pd_pad_h u_psram_io_pad (
+        .i_i   (u_psram_if.psram_io_out_o[i]),
+        .oen_i (u_psram_if.psram_io_en_o[i]),
+        .ren_i (),
+        .c_o   (u_psram_if.psram_io_in_i[i]),
+        .pad_io(s_psram_io_pad[i])
+    );
+  end
+
   test_top u_test_top (
       .apb4 (u_apb4_if.master),
       .psram(u_psram_if.tb)
@@ -55,4 +94,5 @@ module axi4_psram_tb ();
       .psram(u_psram_if.dut)
   );
 
+  // NOTE: inst the verilog model here
 endmodule
