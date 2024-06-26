@@ -53,13 +53,17 @@ module psram_core (
     output logic                         psram_ce_o,
     output logic [                  7:0] psram_io_en_o,
     input  logic [                  7:0] psram_io_in_i,
-    output logic [                  7:0] psram_io_out_o
+    output logic [                  7:0] psram_io_out_o,
+    output logic                         psram_dqs_en_o,
+    input  logic                         psram_dqs_in_i,
+    output logic                         psram_dqs_out_o
 );
 
   logic s_fsm_d, s_fsm_q;
   logic s_ce_d, s_ce_q, s_sck_d, s_sck_q;
   logic [7:0] s_cnt_d, s_cnt_q;
-  logic s_start_trans;
+  //
+  logic s_start_trans, s_cmd_addr_done;
   logic [7:0] s_wr_wait, s_rd_wait, s_trans_cnt_d, s_trans_cnt_q, s_trans_limit_d, s_trans_limit_q;
   logic [55:0] s_cmd_addr;
 
@@ -122,7 +126,7 @@ module psram_core (
   );
 
   assign s_wr_wait = cflg_i ? 8'd2 : '0;
-  assign s_rd_wait = cflg_i ? rdw_i * 2 : '0;
+  assign s_rd_wait = cflg_i ? rdw_i * 2 : '0;  // NOTE: maybe not no need
 
   always_comb begin
     s_cmd_addr = '0;
@@ -132,10 +136,22 @@ module psram_core (
     end
   end
 
+  // dqm
   always_comb begin
-    psram_io_en_o = '0; // TODO: for normal wr rd oper
+    psram_dqs_en_o  = '0;  // TODO: for normal wr rd oper
+    psram_dqs_out_o = '0;
+    if (cfg_wr_i) psram_dqs_en_o = '0;
+    else if (cfg_rd_i) psram_dqs_en_o = '1;
+  end
+
+  // dq io
+  always_comb begin
+    psram_io_en_o = '0;  // TODO: for normal wr rd oper
     if (cfg_wr_i) psram_io_en_o = '0;
-    else if (cfg_rd_i) psram_io_en_o = '1;
+    else if (cfg_rd_i) begin
+      if (s_cmd_addr_done) psram_io_en_o = '0;
+      else psram_io_en_o = '1;
+    end
   end
 
   shift_reg #(
@@ -154,7 +170,8 @@ module psram_core (
       .par_data_o()
   );
 
-  assign done_o = s_trans_cnt_q == s_trans_limit_q;
+  assign s_cmd_addr_done = s_trans_cnt_q == 8'd6;  // HACK:
+  assign done_o          = s_trans_cnt_q == s_trans_limit_q;
   always_comb begin
     s_trans_limit_d = s_trans_limit_q;
     if (cflg_i) begin
