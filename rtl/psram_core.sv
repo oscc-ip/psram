@@ -83,7 +83,7 @@ module psram_core (
   dffr #(2) u_cmd_fsm_dffr (
       clk_i,
       rst_n_i,
-      s_cmd_fsm_q,
+      s_cmd_fsm_d,
       s_cmd_fsm_q
   );
 
@@ -114,7 +114,7 @@ module psram_core (
   );
 
   always_comb begin
-    s_cnt_d = s_cnt_q;
+    s_cnt_d = '0;
     if (~s_ce_q) begin
       if (s_cnt_q == '0) s_cnt_d = pscr_i;
       else s_cnt_d = s_cnt_q - 1'b1;
