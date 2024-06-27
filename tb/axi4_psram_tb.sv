@@ -71,7 +71,7 @@ module axi4_psram_tb ();
       .oen_i (u_psram_if.psram_dqs_en_o),
       .ren_i (),
       .c_o   (u_psram_if.psram_dqs_in_i),
-      .pad_io(s_psram_sck_pad)
+      .pad_io(s_psram_dqs_pad)
   );
 
   for (genvar i = 0; i < 8; i++) begin : PSRAM_TB_PAD_BLOCK
