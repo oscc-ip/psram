@@ -89,6 +89,11 @@
 `define PSRAM_FSM_IDLE 1'b0
 `define PSRAM_FSM_BUSY 1'b1
 
+`define PSRAM_CMD_IDLE 2'b00
+`define PSRAM_CMD_WR   2'b01
+`define PSRAM_CMD_RD   2'b10
+`define PSRAM_CMD_NONE 2'b11
+
 interface psram_if ();
   logic       psram_sck_o;
   logic       psram_ce_o;

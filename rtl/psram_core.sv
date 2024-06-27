@@ -64,6 +64,7 @@ module psram_core (
   logic [7:0] s_cnt_d, s_cnt_q;
   //
   logic s_start_trans, s_cmd_addr_done;
+  logic [1:0] s_cmd_fsm_d, s_cmd_fsm_q;
   logic [7:0] s_wr_wait, s_rd_wait, s_trans_cnt_d, s_trans_cnt_q, s_trans_limit_d, s_trans_limit_q;
   logic [55:0] s_cmd_addr;
 
@@ -72,6 +73,19 @@ module psram_core (
   assign psram_sck_o   = s_sck_q;
 
   assign s_start_trans = cflg_i && (cfg_wr_i | cfg_rd_i);  // TODO: for axi4 wr/rd
+
+  always_comb begin
+    s_cmd_fsm_d = s_cmd_fsm_q;
+    if (cfg_wr_i) s_cmd_fsm_d = `PSRAM_CMD_WR;
+    else if (cfg_rd_i) s_cmd_fsm_d = `PSRAM_CMD_RD;
+    else if (done_o) s_cmd_fsm_d = `PSRAM_CMD_IDLE;
+  end
+  dffr #(2) u_cmd_fsm_dffr (
+      clk_i,
+      rst_n_i,
+      s_cmd_fsm_q,
+      s_cmd_fsm_q
+  );
 
   always_comb begin
     s_fsm_d = s_fsm_q;
@@ -132,23 +146,21 @@ module psram_core (
     s_cmd_addr = '0;
     if (cflg_i) begin
       if (cfg_wr_i) s_cmd_addr = {wrf_i, wrf_i, 24'd0, ma_i, cfg_data_i};
-      else if (cfg_rd_i) s_cmd_addr = {rdf_i, rdf_i, 24'd0, ma_i};
+      else if (cfg_rd_i) s_cmd_addr = {rdf_i, rdf_i, 24'd0, ma_i, 8'd0};
     end
   end
 
-  // dqm
+  // dq dqm
+  // TODO: for normal wr rd oper
   always_comb begin
-    psram_dqs_en_o  = '0;  // TODO: for normal wr rd oper
+    psram_io_en_o   = '0;
+    psram_dqs_en_o  = '0;
     psram_dqs_out_o = '0;
-    if (cfg_wr_i) psram_dqs_en_o = '0;
-    else if (cfg_rd_i) psram_dqs_en_o = '1;
-  end
-
-  // dq io
-  always_comb begin
-    psram_io_en_o = '0;  // TODO: for normal wr rd oper
-    if (cfg_wr_i) psram_io_en_o = '0;
-    else if (cfg_rd_i) begin
+    if (cfg_wr_i || s_cmd_fsm_q == `PSRAM_CMD_WR) begin
+      psram_io_en_o  = '0;
+      psram_dqs_en_o = '0;
+    end else if (cfg_rd_i || s_cmd_fsm_q == `PSRAM_CMD_RD) begin
+      psram_dqs_en_o = '1;
       if (s_cmd_addr_done) psram_io_en_o = '0;
       else psram_io_en_o = '1;
     end
@@ -198,26 +210,5 @@ module psram_core (
       s_trans_cnt_d,
       s_trans_cnt_q
   );
-  // wait_start = 2 + 4 // cmd(rise-fall edge) + addr
-  // data_start = wait_start + wr ? wr_wait_states * 2 : rd_wait_states
-
-  // if count < 2                data <- cmd
-  // else if count < wait_start  data <- addr[]
-
-  // // The transaction counter
-  // wire [7:0] wait_start = (~qpi ? 8 : 2)  // The command 
-  // + ((qpi | qspi) ? 6 : 24);  // The Address        
-  // wire [7:0] data_start = wait_start + (rd_wr ? wait_states : 0);
-  // wire [7:0] data_count = ((qpi | qspi) ? 2 : 8) * size;
-  // wire [7:0] final_count = short_cmd ? 8 : data_start + data_count;
-
-  // assign done = (counter == final_count);
-
-  // always @(posedge clk or negedge rst_n)
-  //   if (!rst_n) counter <= 8'b0;
-  //   else if (sck & ~done) counter <= counter + 1'b1;
-  //   else if (state == IDLE) counter <= 8'b0;
-
-  // if cflg is TRUE, use 
 
 endmodule
