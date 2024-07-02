@@ -17,8 +17,8 @@ module axi4_psram_tb ();
   localparam real CLK_PEROID = 10;  // just for test
   logic rst_n_i, clk_i;
 
-  wire s_psram_sck_pad, s_psram_ce_pad, s_psram_dqs_pad;
-  wire [7:0] s_psram_io_pad;
+  wire s_psram_sck_pad, s_psram_ce_pad, s_psram_dqs_pad, s_psram_dummy_dqs_pad;
+  wire [7:0] s_psram_dummy_io_pad, s_psram_io_pad;
 
   initial begin
     clk_i = 1'b0;
@@ -94,5 +94,11 @@ module axi4_psram_tb ();
       .psram(u_psram_if.dut)
   );
 
-  // NOTE: inst the verilog model here
+  // NOTE: inst the verilog model here and is protected
+  psram_model u_psram_model (
+      .xCLK  (s_psram_sck_pad),
+      .xCEn  (s_psram_ce_pad),
+      .xDQSDM({s_psram_dummy_dqs_pad, s_psram_dqs_pad}),
+      .xDQ   ({s_psram_dummy_io_pad, s_psram_io_pad})
+  );
 endmodule
