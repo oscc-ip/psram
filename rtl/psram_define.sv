@@ -13,42 +13,37 @@
 
 /* register mapping
  * PSRAM_CTRL:
- * BITS:   | 31:10 | 9:2 | 1    | 0  |
- * FIELDS: | RES   | MA  | CFLG | EN |
- * PERMS:  | NONE  | RW  | RW   | RW |
+ * BITS:   | 31:4 | 3:2  | 1    | 0  |
+ * FIELDS: | RES  | PSCR | CFLG | EN |
+ * PERMS:  | NONE | RW   | RW   | RW |
  * ----------------------------------------------------
- * PSRAM_PSCR:
+ * PSRAM_CMD(rw when in config mode):
+ * BITS:   | 31:16 | 15:8 | 7:0  |
+ * FIELDS: | RES   | RCMD | WCMD |
+ * PERMS:  | NONE  | RW   | RW   |
+ * -----------------------------------------------------
+ * PSRAM_CCMD(rw when in config mode):
  * BITS:   | 31:8 | 7:0  |
- * FIELDS: | RES  | PSCR |
+ * FIELDS: | RES  | CCMD |
  * PERMS:  | NONE | RW   |
  * -----------------------------------------------------
- * PSRAM_CMD:
+ * PSRAM_WAIT(rw when in config mode):
  * BITS:   | 31:16 | 15:8 | 7:0 |
- * FIELDS: | RES   | RDC  | WRC |
+ * FIELDS: | RES   | RLC  | WLC |
  * PERMS:  | NONE  | RW   | RW  |
  * -----------------------------------------------------
- * PSRAM_WAIT:
- * BITS:   | 31:8 | 15:8 | 7:0 |
- * FIELDS: | RES  | RDW  | WRW |
- * PERMS:  | NONE | RW   | RW  |
- * -----------------------------------------------------
- * PSRAM_CFG:
- * BITS:   | 31:8 | 15:8 | 7:0 |
- * FIELDS: | RES  | RDF  | WRF |
- * PERMS:  | NONE | RW   | RW  |
- * -----------------------------------------------------
- * PSRAM_ADDR
+ * PSRAM_ADDR(rw when in config mode):
  * BITS:   | 31:0 |
  * FIELDS: | ADDR |
  * PERMS:  | RW   |
  * -----------------------------------------------------
- * PSRAM_DATA(shadow):
+ * PSRAM_DATA(rw when in config mode):
  * BITS:   | 31:8 | 7:0  |
  * FIELDS: | RES  | DATA |
  * PERMS:  | NONE | RW   |
  * -----------------------------------------------------
  * PSRAM_STAT:
- * BITS:   | 31:2 | 2    | 1:0 |
+ * BITS:   | 31:3 | 2    | 1:0 |
  * FIELDS: | RES  | DONE | CRM |
  * PERMS:  | NONE | RO   | RO  |
  * -----------------------------------------------------
@@ -60,44 +55,51 @@
 // 3. write has min burst 2B limit
 // verilog_format: off
 `define PSRAM_CTRL 4'b0000 // BASEADDR + 0x00
-`define PSRAM_PSCR 4'b0001 // BASEADDR + 0x04
-`define PSRAM_CMD  4'b0010 // BASEADDR + 0x08
+`define PSRAM_CMD  4'b0001 // BASEADDR + 0x04
+`define PSRAM_CCMD 4'b0010 // BASEADDR + 0x08
 `define PSRAM_WAIT 4'b0011 // BASEADDR + 0x0C
-`define PSRAM_CFG  4'b0100 // BASEADDR + 0x10
+`define PSRAM_ADDR 4'b0100 // BASEADDR + 0x10
 `define PSRAM_DATA 4'b0101 // BASEADDR + 0x14
 `define PSRAM_STAT 4'b0110 // BASEADDR + 0x18
 
+
 `define PSRAM_CTRL_ADDR {26'b0, `PSRAM_CTRL, 2'b00}
-`define PSRAM_PSCR_ADDR {26'b0, `PSRAM_PSCR, 2'b00}
 `define PSRAM_CMD_ADDR  {26'b0, `PSRAM_CMD , 2'b00}
+`define PSRAM_CCMD_ADDR {26'b0, `PSRAM_CCMD, 2'b00}
 `define PSRAM_WAIT_ADDR {26'b0, `PSRAM_WAIT, 2'b00}
-`define PSRAM_CFG_ADDR  {26'b0, `PSRAM_CFG,  2'b00}
+`define PSRAM_ADDR_ADDR {26'b0, `PSRAM_ADDR, 2'b00}
 `define PSRAM_DATA_ADDR {26'b0, `PSRAM_DATA, 2'b00}
 `define PSRAM_STAT_ADDR {26'b0, `PSRAM_STAT, 2'b00}
 
-`define PSRAM_CTRL_WIDTH 10
-`define PSRAM_PSCR_WIDTH 8
+
+`define PSRAM_CTRL_WIDTH 4
 `define PSRAM_CMD_WIDTH  16
+`define PSRAM_CCMD_WIDTH 8
 `define PSRAM_WAIT_WIDTH 16
-`define PSRAM_CFG_WIDTH  16
+`define PSRAM_ADDR_WIDTH 32
 `define PSRAM_DATA_WIDTH 8
 `define PSRAM_STAT_WIDTH 3
-
-`define PSRAM_PSCR_MIN_VAL  {{(`PSRAM_PSCR_WIDTH-2){1'b0}}, 2'd2}
 // verilog_format: on
+
+`define PSRAM_PSCR_DIV4  2'b00
+`define PSRAM_PSCR_DIV8  2'b01
+`define PSRAM_PSCR_DIV16 2'b10
+`define PSRAM_PSCR_DIV32 2'b11
 
 `define PSRAM_MODE_SPI  2'b00
 `define PSRAM_MODE_QSPI 2'b01
 `define PSRAM_MODE_QPI  2'b10
 `define PSRAM_MODE_OPI  2'b11
 
-`define PSRAM_FSM_IDLE 1'b0
-`define PSRAM_FSM_BUSY 1'b1
 
-`define PSRAM_CMD_IDLE 2'b00
-`define PSRAM_CMD_WR   2'b01
-`define PSRAM_CMD_RD   2'b10
-`define PSRAM_CMD_NONE 2'b11
+`define PSRAM_FSM_IDLE   3'b000
+`define PSRAM_FSM_INST   3'b001
+`define PSRAM_FSM_ADDR   3'b010
+`define PSRAM_FSM_LATN   3'b011
+`define PSRAM_FSM_WDATA  3'b100
+`define PSRAM_FSM_RDATA  3'b101
+`define PSRAM_FSM_RECY   3'b110
+
 
 interface psram_if ();
   logic       psram_sck_o;
