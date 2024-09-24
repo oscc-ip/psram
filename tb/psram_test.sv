@@ -50,11 +50,11 @@ task automatic PSRAMTest::test_wr_rd_reg(input bit [31:0] run_times = 1000);
   super.test_wr_rd_reg();
   // verilog_format: off
   for (int i = 0; i < run_times; i++) begin
-    // this.wr_rd_check(`PSRAM_CTRL_ADDR, "CTRL REG", $random & {`PSRAM_CTRL_WIDTH{1'b1}}, Helper::EQUL);
-    // this.wr_rd_check(`PSRAM_PSCR_ADDR, "PSCR REG", $random & {`PSRAM_PSCR_WIDTH{1'b1}}, Helper::EQUL);
-    // this.wr_rd_check(`PSRAM_CMD_ADDR,  "CMD REG",  $random & {`PSRAM_CMD_WIDTH{1'b1}},  Helper::EQUL);
-    // this.wr_rd_check(`PSRAM_WAIT_ADDR, "WAIT REG", $random & {`PSRAM_WAIT_WIDTH{1'b1}}, Helper::EQUL);
-    // this.wr_rd_check(`PSRAM_CFG_ADDR,  "CFG REG",  $random & {`PSRAM_CFG_WIDTH{1'b1}},  Helper::EQUL);
+    this.wr_rd_check(`PSRAM_CTRL_ADDR, "CTRL REG", 32'd0 & {`PSRAM_CTRL_WIDTH{1'b1}}, Helper::EQUL);
+    this.wr_rd_check(`PSRAM_CMD_ADDR,  "CMD REG",  32'd0 & {`PSRAM_CMD_WIDTH{1'b1}},  Helper::EQUL);
+    this.wr_rd_check(`PSRAM_CCMD_ADDR, "CCMD REG", 32'd0 & {`PSRAM_CCMD_WIDTH{1'b1}}, Helper::EQUL);
+    this.wr_rd_check(`PSRAM_WAIT_ADDR, "WAIT REG", 32'd0 & {`PSRAM_WAIT_WIDTH{1'b1}}, Helper::EQUL);
+    this.wr_rd_check(`PSRAM_ADDR_ADDR, "ADDR REG", 32'd0 & {`PSRAM_ADDR_WIDTH{1'b1}}, Helper::EQUL);
   end
   // verilog_format: on
 endtask

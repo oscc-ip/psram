@@ -14,7 +14,7 @@
 `include "psram_define.sv"
 
 module axi4_psram_tb ();
-  localparam real CLK_PEROID = 10;  // just for test
+  localparam real CLK_PEROID = 1.25;
   logic rst_n_i, clk_i;
 
   wire s_psram_sck_pad, s_psram_ce_pad, s_psram_dqs_pad, s_psram_dummy_dqs_pad;

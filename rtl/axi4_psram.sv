@@ -39,9 +39,21 @@ module axi4_psram #(
   // bitfield
   logic s_bit_en, s_bit_cflg, s_bit_done;
   logic [1:0] s_bit_pscr, s_bit_crm;
-  logic [7:0] s_bit_wcmd, s_bit_rcmd, s_bit_ccmd;
+  logic [7:0] s_bit_recy, s_bit_wcmd, s_bit_rcmd, s_bit_ccmd;
   logic [7:0] s_bit_wlc, s_bit_rlc;
 
+
+  assign s_bit_en        = s_psram_ctrl_q[0];
+  assign s_bit_cflg      = s_psram_ctrl_q[1];
+  assign s_bit_pscr      = s_psram_ctrl_q[3:2];
+  assign s_bit_recy      = s_psram_ctrl_q[11:4];
+  assign s_bit_wcmd      = s_psram_cmd_q[7:0];
+  assign s_bit_rcmd      = s_psram_cmd_q[15:8];
+  assign s_bit_ccmd      = s_psram_ccmd_q[7:0];
+  assign s_bit_wlc       = s_psram_wait_q[7:0];
+  assign s_bit_rlc       = s_psram_wait_q[15:8];
+  assign s_bit_crm       = s_psram_stat_q[1:0];
+  assign s_bit_done      = s_psram_stat_q[2];
 
   assign s_apb4_addr     = apb4.paddr[5:2];
   assign s_apb4_wr_hdshk = apb4.psel && apb4.penable && apb4.pwrite;
@@ -62,7 +74,7 @@ module axi4_psram #(
       s_psram_ctrl_q
   );
 
-  assign s_psram_cmd_en = s_apb4_wr_hdshk && s_apb4_addr == `PSRAM_CMD;
+  assign s_psram_cmd_en = s_apb4_wr_hdshk && s_apb4_addr == `PSRAM_CMD && s_bit_cflg;
   assign s_psram_cmd_d  = apb4.pwdata[`PSRAM_CMD_WIDTH-1:0];
   dffer #(`PSRAM_CMD_WIDTH) u_psram_cmd_dffer (
       apb4.pclk,
@@ -72,7 +84,7 @@ module axi4_psram #(
       s_psram_cmd_q
   );
 
-  assign s_psram_ccmd_en = s_apb4_wr_hdshk && s_apb4_addr == `PSRAM_CCMD;
+  assign s_psram_ccmd_en = s_apb4_wr_hdshk && s_apb4_addr == `PSRAM_CCMD && s_bit_cflg;
   assign s_psram_ccmd_d  = apb4.pwdata[`PSRAM_CCMD_WIDTH-1:0];
   dffer #(`PSRAM_CCMD_WIDTH) u_psram_ccmd_dffer (
       apb4.pclk,
@@ -82,7 +94,7 @@ module axi4_psram #(
       s_psram_ccmd_q
   );
 
-  assign s_psram_wait_en = s_apb4_wr_hdshk && s_apb4_addr == `PSRAM_WAIT;
+  assign s_psram_wait_en = s_apb4_wr_hdshk && s_apb4_addr == `PSRAM_WAIT && s_bit_cflg;
   assign s_psram_wait_d  = apb4.pwdata[`PSRAM_WAIT_WIDTH-1:0];
   dffer #(`PSRAM_WAIT_WIDTH) u_psram_wait_dffer (
       apb4.pclk,
@@ -92,7 +104,7 @@ module axi4_psram #(
       s_psram_wait_q
   );
 
-  assign s_psram_addr_en = s_apb4_wr_hdshk && s_apb4_addr == `PSRAM_ADDR;
+  assign s_psram_addr_en = s_apb4_wr_hdshk && s_apb4_addr == `PSRAM_ADDR && s_bit_cflg;
   assign s_psram_addr_d  = apb4.pwdata[`PSRAM_ADDR_WIDTH-1:0];
   dffer #(`PSRAM_ADDR_WIDTH) u_psram_addr_dffer (
       apb4.pclk,
@@ -104,7 +116,7 @@ module axi4_psram #(
 
 
   // TODO: rd oper
-  assign s_psram_data_en = s_apb4_wr_hdshk && s_apb4_addr == `PSRAM_DATA;
+  assign s_psram_data_en = s_apb4_wr_hdshk && s_apb4_addr == `PSRAM_DATA && s_bit_cflg;
   assign s_psram_data_d  = apb4.pwdata[`PSRAM_DATA_WIDTH-1:0];
   dffer #(`PSRAM_DATA_WIDTH) u_psram_data_dffer (
       apb4.pclk,
