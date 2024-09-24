@@ -50,29 +50,9 @@ module axi4_psram_tb ();
   psram_if u_psram_if ();
 
 
-  tri_pd_pad_h u_psram_sck_pad (
-      .i_i   (u_psram_if.psram_sck_o),
-      .oen_i (1'b0),
-      .ren_i (),
-      .c_o   (),
-      .pad_io(s_psram_sck_pad)
-  );
-
-  tri_pd_pad_h u_psram_ce_pad (
-      .i_i   (u_psram_if.psram_ce_o),
-      .oen_i (1'b0),
-      .ren_i (),
-      .c_o   (),
-      .pad_io(s_psram_ce_pad)
-  );
-
-  tri_pd_pad_h u_psram_dqs_pad (
-      .i_i   (u_psram_if.psram_dqs_out_o),
-      .oen_i (u_psram_if.psram_dqs_en_o),
-      .ren_i (),
-      .c_o   (u_psram_if.psram_dqs_in_i),
-      .pad_io(s_psram_dqs_pad)
-  );
+  tri_pd_pad_h u_psram_sck_pad(.i_i(u_psram_if.psram_sck_o),     .oen_i(1'b1),                      .ren_i(),  .c_o(),                          .pad_io(s_psram_sck_pad));
+  tri_pd_pad_h u_psram_ce_pad (.i_i(u_psram_if.psram_ce_o),      .oen_i(1'b1),                      .ren_i(),  .c_o(),                          .pad_io(s_psram_ce_pad));
+  tri_pd_pad_h u_psram_dqs_pad(.i_i(u_psram_if.psram_dqs_out_o), .oen_i(u_psram_if.psram_dqs_en_o), .ren_i (), .c_o(u_psram_if.psram_dqs_in_i), .pad_io(s_psram_dqs_pad));
 
   for (genvar i = 0; i < 8; i++) begin : PSRAM_TB_PAD_BLOCK
     tri_pd_pad_h u_psram_io_pad (
@@ -94,7 +74,7 @@ module axi4_psram_tb ();
       .psram(u_psram_if.dut)
   );
 
-  // NOTE: inst the verilog model here and is protected
+  // NOTE: inst the verilog model here and this model is privated due to the NDA
   psram_model u_psram_model (
       .xCLK  (s_psram_sck_pad),
       .xCEn  (s_psram_ce_pad),

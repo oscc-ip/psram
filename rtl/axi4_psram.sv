@@ -14,7 +14,7 @@
 `include "psram_define.sv"
 
 module axi4_psram #(
-    parameter int USR_ADDR_SIZE = 64 * 1024 * 1024
+    parameter int USR_ADDR_SIZE = 64 * 1024 * 1024  // 64MB
 ) (
     apb4_if.slave apb4,
     axi4_if.slave axi4,
@@ -55,13 +55,16 @@ module axi4_psram #(
   assign s_bit_en        = s_psram_ctrl_q[0];
   assign s_bit_cflg      = s_psram_ctrl_q[1];
   assign s_bit_ma        = s_psram_ctrl_q[9:2];
+
   assign s_bit_wrc       = s_psram_cmd_q[7:0];
   assign s_bit_rdc       = s_psram_cmd_q[15:8];
+
   assign s_bit_wrw       = s_psram_wait_q[7:0];
   assign s_bit_rdw       = s_psram_wait_q[15:8];
+
   assign s_bit_wrf       = s_psram_cfg_q[7:0];
   assign s_bit_rdf       = s_psram_cfg_q[15:8];
-
+  // irq
   assign psram.irq_o     = 0;
 
   assign s_psram_ctrl_en = s_apb4_wr_hdshk && s_apb4_addr == `PSRAM_CTRL;

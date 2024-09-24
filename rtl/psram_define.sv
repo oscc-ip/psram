@@ -37,6 +37,11 @@
  * FIELDS: | RES  | RDF  | WRF |
  * PERMS:  | NONE | RW   | RW  |
  * -----------------------------------------------------
+ * PSRAM_ADDR
+ * BITS:   | 31:0 |
+ * FIELDS: | ADDR |
+ * PERMS:  | RW   |
+ * -----------------------------------------------------
  * PSRAM_DATA(shadow):
  * BITS:   | 31:8 | 7:0  |
  * FIELDS: | RES  | DATA |

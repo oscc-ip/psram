@@ -61,7 +61,7 @@ module psram_core (
 
   logic s_fsm_d, s_fsm_q;
   logic s_ce_d, s_ce_q, s_sck_d, s_sck_q;
-  logic [7:0] s_cnt_d, s_cnt_q;
+  logic [7:0] s_pscr_cnt_d, s_pscr_cnt_q;
   //
   logic s_start_trans, s_cmd_addr_done;
   logic [1:0] s_cmd_fsm_d, s_cmd_fsm_q;
@@ -114,23 +114,23 @@ module psram_core (
   );
 
   always_comb begin
-    s_cnt_d = '0;
+    s_pscr_cnt_d = '0;
     if (~s_ce_q) begin
-      if (s_cnt_q == '0) s_cnt_d = pscr_i;
-      else s_cnt_d = s_cnt_q - 1'b1;
+      if (s_pscr_cnt_q == '0) s_pscr_cnt_d = pscr_i;
+      else s_pscr_cnt_d = s_pscr_cnt_q - 1'b1;
     end
   end
-  dffr #(`PSRAM_PSCR_WIDTH) u_cnt_dffr (
+  dffr #(`PSRAM_PSCR_WIDTH) u_pscr_cnt_dffr (
       clk_i,
       rst_n_i,
-      s_cnt_d,
-      s_cnt_q
+      s_pscr_cnt_d,
+      s_pscr_cnt_q
   );
 
   always_comb begin
     s_sck_d = s_sck_q;
     if (done_o) s_sck_d = 1'b0;
-    else if (~s_ce_q && s_cnt_q == '0) s_sck_d = ~s_sck_q;
+    else if (~s_ce_q && s_pscr_cnt_q == '0) s_sck_d = ~s_sck_q;
   end
   dffr #(1) u_sck_dffr (
       clk_i,
@@ -142,6 +142,7 @@ module psram_core (
   assign s_wr_wait = cflg_i ? 8'd2 : '0;
   assign s_rd_wait = cflg_i ? rdw_i * 2 : '0;  // NOTE: maybe not no need
 
+  // cmd-8b addr-32b 
   always_comb begin
     s_cmd_addr = '0;
     if (cflg_i) begin
@@ -157,12 +158,12 @@ module psram_core (
     psram_dqs_en_o  = '0;
     psram_dqs_out_o = '0;
     if (cfg_wr_i || s_cmd_fsm_q == `PSRAM_CMD_WR) begin
-      psram_io_en_o  = '0;
-      psram_dqs_en_o = '0;
-    end else if (cfg_rd_i || s_cmd_fsm_q == `PSRAM_CMD_RD) begin
+      psram_io_en_o  = '1;
       psram_dqs_en_o = '1;
-      if (s_cmd_addr_done) psram_io_en_o = '0;
-      else psram_io_en_o = '1;
+    end else if (cfg_rd_i || s_cmd_fsm_q == `PSRAM_CMD_RD) begin
+      psram_dqs_en_o = '0;
+      if (s_cmd_addr_done) psram_io_en_o = '1;
+      else psram_io_en_o = '0;
     end
   end
 
@@ -175,7 +176,7 @@ module psram_core (
       .type_i    (`SHIFT_REG_TYPE_LOGIC),
       .dir_i     ('0),
       .ld_en_i   (cfg_wr_i | cfg_rd_i),
-      .sft_en_i  ((~s_ce_q) & (s_cnt_q == 8'd1)),
+      .sft_en_i  ((~s_ce_q) & (s_pscr_cnt_q == 8'd1)),
       .ser_dat_i ('0),
       .par_data_i(s_cmd_addr),
       .ser_dat_o (psram_io_out_o),
@@ -206,7 +207,7 @@ module psram_core (
   dffer #(8) u_trans_cnt_dffer (
       clk_i,
       rst_n_i,
-      (~s_ce_q) & (s_cnt_q == 8'd1),
+      (~s_ce_q) & (s_pscr_cnt_q == 8'd1),
       s_trans_cnt_d,
       s_trans_cnt_q
   );
