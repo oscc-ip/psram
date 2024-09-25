@@ -44,8 +44,11 @@ module psram_core (
     input  logic [ 7:0] cfg_rlc_i,
     input  logic [31:0] cfg_addr_i,
     input  logic [ 7:0] cfg_data_i,
-    input  logic        xfer_en_i,
+    input  logic [63:0] bus_data_i,
+    input  logic [ 7:0] bus_mask_i,
+    input  logic        xfer_valid_i,
     input  logic        xfer_rdwr_i,
+    output logic        xfer_ready_o,
     output logic        psram_sck_o,
     output logic        psram_ce_o,
     output logic [ 7:0] psram_io_en_o,
@@ -56,16 +59,18 @@ module psram_core (
     output logic        psram_dqs_out_o
 );
 
-  logic s_psram_clk_trg, s_psram_clk;
+  logic s_psram_clk_trg, s_psram_clk, s_psram_mask;
   logic [2:0] s_fsm_state_d, s_fsm_state_q;
   logic [7:0] s_fsm_cnt_d, s_fsm_cnt_q, s_div_val;
 
-  assign psram_ce_o      = '0;
+
+  assign xfer_ready_o    = 1'b0;  // TODO:
   assign psram_sck_o     = psram_ce_o == 1'b0 ? s_psram_clk : '0;
-  assign psram_io_en_o   = '0;
-  assign psram_io_out_o  = '0;
-  assign psram_io_en_o   = '0;
-  assign psram_dqs_out_o = '0;
+  assign psram_ce_o      = s_fsm_state_q == `PSRAM_FSM_IDLE || s_fsm_state_q == `PSRAM_FSM_RECY;
+  assign psram_io_en_o   = ~(s_fsm_state_q == `PSRAM_FSM_RDATA);  // NOTE: refer to the TRM P16
+  assign psram_io_out_o  = '0;  // TODO: need a var wire to connect i.e. inst, addr, laty(0)
+  assign psram_dqs_en_o  = s_fsm_state_q == `PSRAM_FSM_WDATA;
+  assign psram_dqs_out_o = s_fsm_state_q == `PSRAM_FSM_WDATA ? s_psram_mask : '0;
 
   always_comb begin
     s_div_val = 8'd3;
@@ -97,7 +102,7 @@ module psram_core (
     s_fsm_cnt_d   = s_fsm_cnt_q;
     unique case (s_fsm_state_q)
       `PSRAM_FSM_IDLE: begin
-        if (xfer_en_i) begin
+        if (xfer_valid_i) begin
           s_fsm_state_d = `PSRAM_FSM_INST;
           s_fsm_cnt_d   = 8'd1;
         end
