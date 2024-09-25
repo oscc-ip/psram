@@ -44,8 +44,10 @@ module psram_core (
     input  logic [ 7:0] cfg_rlc_i,
     input  logic [31:0] cfg_addr_i,
     input  logic [ 7:0] cfg_data_i,
-    input  logic [63:0] bus_data_i,
-    input  logic [ 7:0] bus_mask_i,
+    input  logic [31:0] bus_addr_i,
+    input  logic [63:0] bus_wr_data_i,
+    input  logic [ 7:0] bus_wr_mask_i,
+    output logic [63:0] bus_rd_data_o,
     input  logic        xfer_valid_i,
     input  logic        xfer_rdwr_i,
     output logic        xfer_ready_o,
@@ -59,18 +61,23 @@ module psram_core (
     output logic        psram_dqs_out_o
 );
 
-  logic s_psram_clk_trg, s_psram_clk, s_psram_mask;
+  logic s_psram_clk_trg, s_psram_clk;
   logic [2:0] s_fsm_state_d, s_fsm_state_q;
   logic [7:0] s_fsm_cnt_d, s_fsm_cnt_q, s_div_val;
+  logic [7:0] s_wr_shift_data;
+  logic       s_wr_shift_mask;
+  logic [31:0] s_xfer_addr_d, s_xfer_addr_q;
+  logic [63:0] s_wr_data_d, s_wr_data_q;
+  logic [7:0] s_wr_mask_d, s_wr_mask_q;
 
 
-  assign xfer_ready_o    = 1'b0;  // TODO:
+  assign xfer_ready_o    = s_fsm_state_q == `PSRAM_FSM_IDLE;
   assign psram_sck_o     = psram_ce_o == 1'b0 ? s_psram_clk : '0;
   assign psram_ce_o      = s_fsm_state_q == `PSRAM_FSM_IDLE || s_fsm_state_q == `PSRAM_FSM_RECY;
   assign psram_io_en_o   = ~(s_fsm_state_q == `PSRAM_FSM_RDATA);  // NOTE: refer to the TRM P16
-  assign psram_io_out_o  = '0;  // TODO: need a var wire to connect i.e. inst, addr, laty(0)
+  assign psram_io_out_o  = s_wr_shift_data;
   assign psram_dqs_en_o  = s_fsm_state_q == `PSRAM_FSM_WDATA;
-  assign psram_dqs_out_o = s_fsm_state_q == `PSRAM_FSM_WDATA ? s_psram_mask : '0;
+  assign psram_dqs_out_o = s_fsm_state_q == `PSRAM_FSM_WDATA ? s_wr_shift_mask : '0;
 
   always_comb begin
     s_div_val = 8'd3;
@@ -169,18 +176,80 @@ module psram_core (
     endcase
   end
 
-  dffr #(3) u_fsm_dffr (
+  dffer #(3) u_fsm_state_dffer (
       clk_i,
       rst_n_i,
+      s_psram_clk_trg,
       s_fsm_state_d,
       s_fsm_state_q
   );
 
-  dffr #(8) u_fsm_cnt_dffr (
+  dffer #(8) u_fsm_cnt_dffer (
       clk_i,
       rst_n_i,
+      s_psram_clk_trg,
       s_fsm_cnt_d,
       s_fsm_cnt_q
   );
 
+  always_comb begin
+    s_wr_shift_data = '0;
+    s_wr_shift_mask = '0;
+    unique case (s_fsm_state_q)
+      `PSRAM_FSM_IDLE: begin
+        s_wr_shift_data = '0;
+      end
+      `PSRAM_FSM_INST: begin
+        s_wr_shift_data = cfg_cflg_i ? cfg_ccmd_i : (xfer_rdwr_i ? cfg_rcmd_i : cfg_wcmd_i);
+      end
+      `PSRAM_FSM_ADDR:  s_wr_shift_data = s_xfer_addr_q[31:24];
+      `PSRAM_FSM_LATN:  s_wr_shift_data = '0;
+      `PSRAM_FSM_WDATA: begin
+        s_wr_shift_data = s_wr_data_q[63:56];
+        s_wr_shift_mask = s_wr_mask_q[7];
+      end
+      `PSRAM_FSM_RDATA: s_wr_shift_data = '0;
+      `PSRAM_FSM_RECY:  s_wr_shift_data = '0;
+      default:          s_wr_shift_data = '0;
+    endcase
+  end
+
+  // shift reg
+  always_comb begin
+    if (s_fsm_state_q == `PSRAM_FSM_ADDR) s_xfer_addr_d = {s_xfer_addr_q[23:0], 8'd0};
+    else s_xfer_addr_d = cfg_cflg_i ? cfg_addr_i : bus_addr_i;
+  end
+  dffer #(32) u_xfer_addr_dffer (
+      clk_i,
+      rst_n_i,
+      s_psram_clk_trg,
+      s_xfer_addr_d,
+      s_xfer_addr_q
+  );
+
+  // shift reg
+  always_comb begin
+    if (s_fsm_state_q == `PSRAM_FSM_WDATA) s_wr_data_d = {s_wr_data_q[55:0], 8'd0};
+    else s_wr_data_d = cfg_cflg_i ? {cfg_data_i, 56'd0} : bus_wr_data_i;
+  end
+  dffer #(64) u_wr_data_dffer (
+      clk_i,
+      rst_n_i,
+      s_psram_clk_trg,
+      s_wr_data_d,
+      s_wr_data_q
+  );
+
+
+  always_comb begin
+    if (s_fsm_state_q == `PSRAM_FSM_WDATA) s_wr_mask_d = {s_wr_mask_q[6:0], 1'b0};
+    else s_wr_mask_d = cfg_cflg_i ? '1 : bus_wr_mask_i;
+  end
+  dffer #(1) u_wr_mask_dffer (
+      clk_i,
+      rst_n_i,
+      s_psram_clk_trg,
+      s_wr_mask_d,
+      s_wr_mask_q
+  );
 endmodule
