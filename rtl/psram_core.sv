@@ -44,6 +44,7 @@ module psram_core (
     input  logic [ 7:0] cfg_rlc_i,
     input  logic [31:0] cfg_addr_i,
     input  logic [ 7:0] cfg_data_i,
+    output logic [ 7:0] cfg_data_o,
     input  logic [31:0] bus_addr_i,
     input  logic [63:0] bus_wr_data_i,
     input  logic [ 7:0] bus_wr_mask_i,
