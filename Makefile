@@ -3,7 +3,7 @@ EXTRA        := -P ${NOVAS}/novas.tab ${NOVAS}/pli.a
 
 VERDI_TOOL   := verdi
 SIM_TOOL     := vcs
-SIM_OPTIONS  := -full64 -debug_acc+all  +v2k -sverilog -timescale=1ns/10ps \
+SIM_OPTIONS  := -full64 -debug_acc+all  +v2k -sverilog -timescale=1ns/1ps \
                 ${EXTRA} \
                 +error+500\
                 +define+SVA_OFF\

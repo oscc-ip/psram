@@ -70,10 +70,12 @@ module psram_core (
   logic [31:0] s_xfer_addr_d, s_xfer_addr_q;
   logic [63:0] s_wr_data_d, s_wr_data_q;
   logic [7:0] s_wr_mask_d, s_wr_mask_q;
+  logic [7:0] s_clk_cnt;
 
 
   assign xfer_ready_o    = s_fsm_state_q == `PSRAM_FSM_IDLE;
   assign psram_sck_o     = psram_ce_o == 1'b0 ? s_psram_clk : '0;
+  // delay one cycle of ce
   assign psram_ce_o      = s_fsm_state_q == `PSRAM_FSM_IDLE || s_fsm_state_q == `PSRAM_FSM_RECY;
   assign psram_io_en_o   = ~(s_fsm_state_q == `PSRAM_FSM_RDATA);  // NOTE: refer to the TRM P16
   assign psram_io_out_o  = s_wr_shift_data;
@@ -89,7 +91,7 @@ module psram_core (
       `PSRAM_PSCR_DIV32: s_div_val = 8'd31;
     endcase
   end
-  // due to set one-time in init phase, set `div_valid_i` to `1` is ok
+  // due to set one-time in init phase, set `div_valid_i` to `0` is ok
   clk_int_div_simple #(
       .DIV_VALUE_WIDTH (8),
       .DONE_DELAY_WIDTH(3)
@@ -97,14 +99,15 @@ module psram_core (
       .clk_i      (clk_i),
       .rst_n_i    (rst_n_i),
       .div_i      (s_div_val),
-      .div_valid_i(1'b1),
+      .div_valid_i(1'b0),
       .div_ready_o(),
       .div_done_o (),
-      .clk_cnt_o  (),
-      .clk_trg_o  (s_psram_clk_trg),
+      .clk_cnt_o  (s_clk_cnt),
+      .clk_trg_o  (),
       .clk_o      (s_psram_clk)
   );
 
+  assign s_psram_clk_trg = s_clk_cnt == 3;  // HACK: for div4
 
   always_comb begin
     s_fsm_state_d = s_fsm_state_q;

@@ -14,7 +14,7 @@
 `include "psram_define.sv"
 
 module axi4_psram_tb ();
-  localparam real CLK_PEROID = 1.25;
+  localparam real CLK_PEROID = 1.25;  // for 800M
   logic rst_n_i, clk_i;
 
   wire s_psram_sck_pad, s_psram_ce_pad, s_psram_dqs_pad, s_psram_dummy_dqs_pad;
@@ -22,8 +22,10 @@ module axi4_psram_tb ();
 
   initial begin
     clk_i = 1'b0;
+    $display("%f", CLK_PEROID / 2);
     forever begin
       #(CLK_PEROID / 2) clk_i <= ~clk_i;
+      // #0.625 clk_i <= ~clk_i;
     end
   end
 
@@ -50,9 +52,27 @@ module axi4_psram_tb ();
   psram_if u_psram_if ();
 
 
-  tri_pd_pad_h u_psram_sck_pad(.i_i(u_psram_if.psram_sck_o),     .oen_i(1'b1),                      .ren_i(),  .c_o(),                          .pad_io(s_psram_sck_pad));
-  tri_pd_pad_h u_psram_ce_pad (.i_i(u_psram_if.psram_ce_o),      .oen_i(1'b1),                      .ren_i(),  .c_o(),                          .pad_io(s_psram_ce_pad));
-  tri_pd_pad_h u_psram_dqs_pad(.i_i(u_psram_if.psram_dqs_out_o), .oen_i(u_psram_if.psram_dqs_en_o), .ren_i (), .c_o(u_psram_if.psram_dqs_in_i), .pad_io(s_psram_dqs_pad));
+  tri_pd_pad_h u_psram_sck_pad (
+      .i_i   (u_psram_if.psram_sck_o),
+      .oen_i (1'b1),
+      .ren_i (),
+      .c_o   (),
+      .pad_io(s_psram_sck_pad)
+  );
+  tri_pd_pad_h u_psram_ce_pad (
+      .i_i   (u_psram_if.psram_ce_o),
+      .oen_i (1'b1),
+      .ren_i (),
+      .c_o   (),
+      .pad_io(s_psram_ce_pad)
+  );
+  tri_pd_pad_h u_psram_dqs_pad (
+      .i_i   (u_psram_if.psram_dqs_out_o),
+      .oen_i (u_psram_if.psram_dqs_en_o),
+      .ren_i (),
+      .c_o   (u_psram_if.psram_dqs_in_i),
+      .pad_io(s_psram_dqs_pad)
+  );
 
   for (genvar i = 0; i < 8; i++) begin : PSRAM_TB_PAD_BLOCK
     tri_pd_pad_h u_psram_io_pad (
