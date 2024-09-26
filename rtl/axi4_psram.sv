@@ -151,4 +151,36 @@ module axi4_psram #(
       endcase
     end
   end
+
+
+  psram_core u_psram_core (
+      .clk_i          (axi4.aclk),
+      .rst_n_i        (axi4.aresetn),
+      .cfg_cflg_i     (s_bit_cflg),
+      .cfg_pscr_i     (s_bit_pscr),
+      .cfg_recy_i     (s_bit_recy),
+      .cfg_wcmd_i     (s_bit_wcmd),
+      .cfg_rcmd_i     (s_bit_rcmd),
+      .cfg_ccmd_i     (s_bit_ccmd),
+      .cfg_wlc_i      (s_bit_wlc),
+      .cfg_rlc_i      (s_bit_rlc),
+      .cfg_addr_i     (s_psram_addr_q),
+      .cfg_data_i     (s_psram_data_q),
+      .cfg_data_o     (),                      // TODO:
+      .bus_addr_i     ('0),
+      .bus_wr_data_i  ('0),
+      .bus_wr_mask_i  ('1),
+      .bus_rd_data_o  (),                      // TODO:
+      .xfer_valid_i   ('0),
+      .xfer_rdwr_i    ('0),
+      .xfer_ready_o   (),
+      .psram_sck_o    (psram.psram_sck_o),
+      .psram_ce_o     (psram.psram_ce_o),
+      .psram_io_en_o  (psram.psram_io_en_o),
+      .psram_io_in_i  (psram.psram_io_in_i),
+      .psram_io_out_o (psram.psram_io_out_o),
+      .psram_dqs_en_o (psram.psram_dqs_en_o),
+      .psram_dqs_in_i (psram.psram_dqs_in_i),
+      .psram_dqs_out_o(psram.psram_dqs_out_o)
+  );
 endmodule

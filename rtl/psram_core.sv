@@ -27,10 +27,10 @@
 // See the Mulan PSL v2 for more details.
 
 `include "shift_reg.sv"
+`include "clk_int_div.sv"
 `include "psram_define.sv"
 
 // inter_clk : psram_clk = 4 : 1
-// 1: rd 0: wr
 module psram_core (
     input  logic        clk_i,
     input  logic        rst_n_i,
@@ -100,6 +100,7 @@ module psram_core (
       .div_valid_i(1'b1),
       .div_ready_o(),
       .div_done_o (),
+      .clk_cnt_o  (),
       .clk_trg_o  (s_psram_clk_trg),
       .clk_o      (s_psram_clk)
   );
@@ -197,9 +198,7 @@ module psram_core (
     s_wr_shift_data = '0;
     s_wr_shift_mask = '0;
     unique case (s_fsm_state_q)
-      `PSRAM_FSM_IDLE: begin
-        s_wr_shift_data = '0;
-      end
+      `PSRAM_FSM_IDLE:  s_wr_shift_data = '0;
       `PSRAM_FSM_INST: begin
         s_wr_shift_data = cfg_cflg_i ? cfg_ccmd_i : (xfer_rdwr_i ? cfg_rcmd_i : cfg_wcmd_i);
       end
@@ -215,7 +214,7 @@ module psram_core (
     endcase
   end
 
-  // shift reg
+  // addr shift reg
   always_comb begin
     if (s_fsm_state_q == `PSRAM_FSM_ADDR) s_xfer_addr_d = {s_xfer_addr_q[23:0], 8'd0};
     else s_xfer_addr_d = cfg_cflg_i ? cfg_addr_i : bus_addr_i;
@@ -228,7 +227,7 @@ module psram_core (
       s_xfer_addr_q
   );
 
-  // shift reg
+  // wr data shift reg
   always_comb begin
     if (s_fsm_state_q == `PSRAM_FSM_WDATA) s_wr_data_d = {s_wr_data_q[55:0], 8'd0};
     else s_wr_data_d = cfg_cflg_i ? {cfg_data_i, 56'd0} : bus_wr_data_i;
@@ -241,12 +240,12 @@ module psram_core (
       s_wr_data_q
   );
 
-
+  // wr mask shift reg
   always_comb begin
     if (s_fsm_state_q == `PSRAM_FSM_WDATA) s_wr_mask_d = {s_wr_mask_q[6:0], 1'b0};
     else s_wr_mask_d = cfg_cflg_i ? '1 : bus_wr_mask_i;
   end
-  dffer #(1) u_wr_mask_dffer (
+  dffer #(8) u_wr_mask_dffer (
       clk_i,
       rst_n_i,
       s_psram_clk_trg,
