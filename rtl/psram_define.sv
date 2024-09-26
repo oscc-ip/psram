@@ -92,13 +92,15 @@
 `define PSRAM_MODE_OPI  2'b11
 
 
-`define PSRAM_FSM_IDLE   3'b000
-`define PSRAM_FSM_INST   3'b001
-`define PSRAM_FSM_ADDR   3'b010
-`define PSRAM_FSM_LATN   3'b011
-`define PSRAM_FSM_WDATA  3'b100
-`define PSRAM_FSM_RDATA  3'b101
-`define PSRAM_FSM_RECY   3'b110
+`define PSRAM_FSM_IDLE   4'b0000
+`define PSRAM_FSM_TCSP   4'b0001
+`define PSRAM_FSM_INST   4'b0010
+`define PSRAM_FSM_ADDR   4'b0011
+`define PSRAM_FSM_LATN   4'b0100
+`define PSRAM_FSM_WDATA  4'b0101
+`define PSRAM_FSM_RDATA  4'b0110
+`define PSRAM_FSM_TCHD   4'b0111
+`define PSRAM_FSM_RECY   4'b1000
 
 
 interface psram_if ();

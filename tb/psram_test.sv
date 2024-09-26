@@ -64,7 +64,7 @@ endtask
 task automatic PSRAMTest::test_cfg_wr_rd();
   bit [31:0] ctrl_val = '0, cmd_val = '0, ccmd_val = '0;
   bit [31:0] wait_val = '0, addr_val = '0, data_val = '0;
-  repeat (400 * 2) @(posedge this.apb4.pclk);
+  repeat (400 * 3) @(posedge this.apb4.pclk);
   $display("%t === [test psram cfg wr rd] ===", $time);
   // wr cmd
   this.write(`PSRAM_CTRL_ADDR, ctrl_val);

@@ -63,7 +63,7 @@ module psram_core (
 );
 
   logic s_psram_clk_trg, s_psram_clk;
-  logic [2:0] s_fsm_state_d, s_fsm_state_q;
+  logic [3:0] s_fsm_state_d, s_fsm_state_q;
   logic [7:0] s_fsm_cnt_d, s_fsm_cnt_q, s_div_val;
   logic [7:0] s_wr_shift_data;
   logic       s_wr_shift_mask;
@@ -71,16 +71,19 @@ module psram_core (
   logic [63:0] s_wr_data_d, s_wr_data_q;
   logic [7:0] s_wr_mask_d, s_wr_mask_q;
   logic [7:0] s_clk_cnt;
+  logic s_ce_fsm_low_bound, s_ce_fsm_high_bound;
 
 
-  assign xfer_ready_o    = s_fsm_state_q == `PSRAM_FSM_IDLE;
-  assign psram_sck_o     = psram_ce_o == 1'b0 ? s_psram_clk : '0;
+  assign xfer_ready_o        = s_fsm_state_q == `PSRAM_FSM_IDLE;
+  assign s_ce_fsm_low_bound  = s_fsm_state_q > `PSRAM_FSM_TCSP;
+  assign s_ce_fsm_high_bound = s_fsm_state_q < `PSRAM_FSM_TCHD;
+  assign psram_sck_o         = s_ce_fsm_low_bound && s_ce_fsm_high_bound ? s_psram_clk : '0;
   // delay one cycle of ce
-  assign psram_ce_o      = s_fsm_state_q == `PSRAM_FSM_IDLE || s_fsm_state_q == `PSRAM_FSM_RECY;
-  assign psram_io_en_o   = ~(s_fsm_state_q == `PSRAM_FSM_RDATA);  // NOTE: refer to the TRM P16
-  assign psram_io_out_o  = s_wr_shift_data;
-  assign psram_dqs_en_o  = s_fsm_state_q == `PSRAM_FSM_WDATA;
-  assign psram_dqs_out_o = s_fsm_state_q == `PSRAM_FSM_WDATA ? s_wr_shift_mask : '0;
+  assign psram_ce_o          = s_fsm_state_q == `PSRAM_FSM_IDLE || s_fsm_state_q == `PSRAM_FSM_RECY;
+  assign psram_io_en_o       = ~(s_fsm_state_q == `PSRAM_FSM_RDATA);  // NOTE: refer to the TRM P16
+  assign psram_io_out_o      = s_wr_shift_data;
+  assign psram_dqs_en_o      = s_fsm_state_q == `PSRAM_FSM_WDATA;
+  assign psram_dqs_out_o     = s_fsm_state_q == `PSRAM_FSM_WDATA ? s_wr_shift_mask : '0;
 
   always_comb begin
     s_div_val = 8'd3;
@@ -99,7 +102,7 @@ module psram_core (
       .clk_i      (clk_i),
       .rst_n_i    (rst_n_i),
       .div_i      (s_div_val),
-      .div_valid_i(1'b0),
+      .div_valid_i(1'b0),        // when div_valid_i == 1, inter cnt reg will set to '0'
       .div_ready_o(),
       .div_done_o (),
       .clk_cnt_o  (s_clk_cnt),
@@ -107,22 +110,31 @@ module psram_core (
       .clk_o      (s_psram_clk)
   );
 
-  assign s_psram_clk_trg = s_clk_cnt == 3;  // HACK: for div4
-
+  // 1. delay some cycles to meet tCSP at negedge of ce
+  // 2. align the first posedge of psram_sck when ce == 0
+  // 3. delay some cycles to meet tCHD at posedge of ce
   always_comb begin
     s_fsm_state_d = s_fsm_state_q;
     s_fsm_cnt_d   = s_fsm_cnt_q;
     unique case (s_fsm_state_q)
       `PSRAM_FSM_IDLE: begin
         if (xfer_valid_i) begin
+          s_fsm_state_d = `PSRAM_FSM_TCSP;
+          s_fsm_cnt_d   = 8'd0;
+        end
+      end
+      `PSRAM_FSM_TCSP: begin
+        if (s_fsm_cnt_q == '0) begin
           s_fsm_state_d = `PSRAM_FSM_INST;
-          s_fsm_cnt_d   = 8'd1;
+          s_fsm_cnt_d   = 8'd2;
+        end else begin
+          s_fsm_cnt_d = s_fsm_cnt_q - 1'b1;
         end
       end
       `PSRAM_FSM_INST: begin
         if (s_fsm_cnt_q == '0) begin
           s_fsm_state_d = `PSRAM_FSM_ADDR;
-          s_fsm_cnt_d   = 8'd3;
+          s_fsm_cnt_d   = 8'd4;
         end else begin
           s_fsm_cnt_d = s_fsm_cnt_q - 1'b1;
         end
@@ -153,13 +165,21 @@ module psram_core (
       end
       `PSRAM_FSM_WDATA: begin
         if (s_fsm_cnt_q == '0) begin
-          s_fsm_state_d = `PSRAM_FSM_RECY;
-          s_fsm_cnt_d   = cfg_recy_i;
+          s_fsm_state_d = `PSRAM_FSM_TCHD;
+          s_fsm_cnt_d   = '0;
         end else begin
-          s_fsm_cnt_d = s_fsm_cnt_q - 1'b1;  // NOTE: right?
+          s_fsm_cnt_d = s_fsm_cnt_q - 1'b1;
         end
       end
       `PSRAM_FSM_RDATA: begin  // NOTE: need to capture the posedge of the dqs
+        if (s_fsm_cnt_q == '0) begin
+          s_fsm_state_d = `PSRAM_FSM_TCHD;
+          s_fsm_cnt_d   = '0;
+        end else begin
+          s_fsm_cnt_d = s_fsm_cnt_q - 1'b1;
+        end
+      end
+      `PSRAM_FSM_TCHD: begin
         if (s_fsm_cnt_q == '0) begin
           s_fsm_state_d = `PSRAM_FSM_RECY;
           s_fsm_cnt_d   = cfg_recy_i;
@@ -181,7 +201,18 @@ module psram_core (
     endcase
   end
 
-  dffer #(3) u_fsm_state_dffer (
+  // HACK: chg data at 0 or 2 for div4 when ce == 0
+  // when in INST, ADDR or xDATA phase, ddr mode
+  // otherwise in sdr mode
+  always_comb begin
+    if (s_fsm_state_q == `PSRAM_FSM_INST  || s_fsm_state_q == `PSRAM_FSM_ADDR ||
+        s_fsm_state_q == `PSRAM_FSM_WDATA || s_fsm_state_q == `PSRAM_FSM_RDATA) begin
+      s_psram_clk_trg = s_clk_cnt == 0 || s_clk_cnt == 2;
+    end else begin
+      s_psram_clk_trg = s_clk_cnt == 3;
+    end
+  end
+  dffer #(4) u_fsm_state_dffer (
       clk_i,
       rst_n_i,
       s_psram_clk_trg,
