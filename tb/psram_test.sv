@@ -26,7 +26,8 @@ class PSRAMTest extends APB4Master;
   extern task automatic test_reset_reg();
   extern task automatic test_wr_rd_reg(input bit [31:0] run_times = 1000);
   extern task automatic test_cfg_wr_rd();
-  extern task automatic tset_global_reset();
+  extern task automatic test_global_reset();
+  extern task automatic test_bus_wr_rd();
 endclass
 
 function PSRAMTest::new(string name, virtual apb4_if.master apb4, virtual psram_if.tb psram);
@@ -92,8 +93,11 @@ task automatic PSRAMTest::test_cfg_wr_rd();
   // // this.write(`psram)
 endtask
 
-task automatic PSRAMTest::tset_global_reset();
+task automatic PSRAMTest::test_global_reset();
   $display("%t === [test psram global reset] ===", $time);
 endtask
 
+task automatic PSRAMTest::test_bus_wr_rd();
+  $display("%t === [test psram bus wr rd] ===", $time);
+endtask
 `endif

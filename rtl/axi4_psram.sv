@@ -161,6 +161,70 @@ module axi4_psram #(
     end
   end
 
+  axi4_slv_fsm #(
+      .USR_ADDR_SIZE(USR_ADDR_SIZE)
+  ) u_axi4_slv_fsm (
+      .aclk           (axi4.aclk),
+      .aresetn        (axi4.aresetn),
+      .awid           (axi4.awid),
+      .awaddr         (axi4.awaddr),
+      .awlen          (axi4.awlen),
+      .awsize         (axi4.awsize),
+      .awburst        (axi4.awburst),
+      .awlock         (axi4.awlock),
+      .awcache        (axi4.awcache),
+      .awprot         (axi4.awprot),
+      .awqos          (axi4.awqos),
+      .awregion       (axi4.awregion),
+      .awuser         (axi4.awuser),
+      .awvalid        (axi4.awvalid),
+      .awready        (axi4.awready),
+      .wdata          (axi4.wdata),
+      .wstrb          (axi4.wstrb),
+      .wlast          (axi4.wlast),
+      .wuser          (axi4.wuser),
+      .wvalid         (axi4.wvalid),
+      .wready         (axi4.wready),
+      .bid            (axi4.bid),
+      .bresp          (axi4.bresp),
+      .buser          (axi4.buser),
+      .bvalid         (axi4.bvalid),
+      .bready         (axi4.bready),
+      .arid           (axi4.arid),
+      .araddr         (axi4.araddr),
+      .arlen          (axi4.arlen),
+      .arsize         (axi4.arsize),
+      .arburst        (axi4.arburst),
+      .arlock         (axi4.arlock),
+      .arcache        (axi4.arcache),
+      .arprot         (axi4.arprot),
+      .arqos          (axi4.arqos),
+      .arregion       (axi4.arregion),
+      .aruser         (axi4.aruser),
+      .arvalid        (axi4.arvalid),
+      .arready        (axi4.arready),
+      .rid            (axi4.rid),
+      .rdata          (axi4.rdata),
+      .rresp          (axi4.rresp),
+      .rlast          (axi4.rlast),
+      .ruser          (axi4.ruser),
+      .rvalid         (axi4.rvalid),
+      .rready         (axi4.rready),
+      .s_usr_en_o     (),
+      .s_usr_wen_o    (),
+      .s_usr_addr_o   (),
+      .s_usr_bm_o     (),
+      .s_usr_dat_o    (),
+      .s_usr_dat_i    ('0),
+      .s_usr_awready_i('0),
+      .s_usr_wready_i ('0),
+      .s_usr_bvalid_i ('0),
+      .s_usr_arready_i('0),
+      .s_usr_rvalid_i ('0)
+  );
+
+
+
 
   // TODO: add cfg rd oper and axi4 wr/rd oper
   always_comb begin
@@ -189,7 +253,6 @@ module axi4_psram #(
       s_xfer_rdwr_d,
       s_xfer_rdwr_q
   );
-
   psram_core u_psram_core (
       .clk_i          (axi4.aclk),
       .rst_n_i        (axi4.aresetn),
