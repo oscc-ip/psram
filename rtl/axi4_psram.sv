@@ -44,7 +44,12 @@ module axi4_psram #(
   // other
   logic s_xfer_valid_d, s_xfer_valid_q;
   logic s_xfer_rdwr_d, s_xfer_rdwr_q, s_xfer_ready;
-  logic [7:0] s_cfg_rd_data;
+  // utils
+  logic s_bus_en, s_bus_wen;
+  logic [7:0] s_cfg_rd_data, s_bus_wr_mask;
+  logic [22:0] s_axi_bus_addr;
+  logic [31:0] s_bus_addr;
+  logic [63:0] s_bus_wr_data, s_bus_rd_data;
 
 
   assign s_bit_en        = s_psram_ctrl_q[0];
@@ -67,6 +72,7 @@ module axi4_psram #(
 
   // irq
   assign psram.irq_o     = 0;
+  assign s_bus_addr      = {6'd0, s_axi_bus_addr, 3'd0};
 
   assign s_psram_ctrl_en = s_apb4_wr_hdshk && s_apb4_addr == `PSRAM_CTRL;
   assign s_psram_ctrl_d  = apb4.pwdata[`PSRAM_CTRL_WIDTH-1:0];
@@ -210,27 +216,27 @@ module axi4_psram #(
       .ruser          (axi4.ruser),
       .rvalid         (axi4.rvalid),
       .rready         (axi4.rready),
-      .s_usr_en_o     (),
-      .s_usr_wen_o    (),
-      .s_usr_addr_o   (),
-      .s_usr_bm_o     (),
-      .s_usr_dat_o    (),
-      .s_usr_dat_i    ('0),
-      .s_usr_awready_i('0),
+      .s_usr_en_o     (s_bus_en),
+      .s_usr_wen_o    (s_bus_wen),
+      .s_usr_addr_o   (s_axi_bus_addr),
+      .s_usr_bm_o     (s_bus_wr_mask),
+      .s_usr_dat_o    (s_bus_wr_data),
+      .s_usr_dat_i    (s_bus_rd_data),
+      .s_usr_awready_i(s_xfer_ready),
       .s_usr_wready_i ('0),
-      .s_usr_bvalid_i ('0),
-      .s_usr_arready_i('0),
+      .s_usr_bvalid_i (1'b1),
+      .s_usr_arready_i(s_xfer_ready),
       .s_usr_rvalid_i ('0)
   );
 
 
-
-
-  // TODO: add cfg rd oper and axi4 wr/rd oper
+  // TODO: add cfg rd oper and set '0' logic
   always_comb begin
     s_xfer_valid_d = s_xfer_valid_q;
     if (s_bit_cflg && ~s_xfer_valid_q) begin
       s_xfer_valid_d = (s_apb4_wr_hdshk && s_apb4_addr == `PSRAM_DATA);
+    end else begin
+      s_xfer_valid_d = ~s_bit_cflg && s_bus_en;
     end
   end
   dffr #(1) u_xfer_valid_dffr (
@@ -245,6 +251,8 @@ module axi4_psram #(
     s_xfer_rdwr_d = s_xfer_rdwr_q;
     if (s_bit_cflg && ~s_xfer_rdwr_q) begin  // HACK:
       s_xfer_rdwr_d = ~(s_apb4_wr_hdshk && s_apb4_addr == `PSRAM_DATA);
+    end else begin
+      s_xfer_rdwr_d = ~s_bit_cflg && ~s_bus_wen;
     end
   end
   dffr #(1) u_xfer_rdwr_dffr (
@@ -267,10 +275,10 @@ module axi4_psram #(
       .cfg_addr_i     (s_psram_addr_q),
       .cfg_data_i     (s_psram_data_q),
       .cfg_data_o     (s_cfg_rd_data),
-      .bus_addr_i     ('0),
-      .bus_wr_data_i  ('0),
-      .bus_wr_mask_i  ('1),
-      .bus_rd_data_o  (),
+      .bus_addr_i     (s_bus_addr),
+      .bus_wr_data_i  (s_bus_wr_data),
+      .bus_wr_mask_i  (s_bus_wr_mask),
+      .bus_rd_data_o  (s_bus_rd_data),
       .xfer_valid_i   (s_xfer_valid_q),        // last for div clk
       .xfer_rdwr_i    ('0),                    // last for div clks_xfer_rdwr_q
       .xfer_ready_o   (s_xfer_ready),
