@@ -86,6 +86,7 @@ module axi4_psram_tb ();
 
   test_top u_test_top (
       .apb4 (u_apb4_if.master),
+      .axi4 (u_axi4_if.master),
       .psram(u_psram_if.tb)
   );
   axi4_psram u_axi4_psram (

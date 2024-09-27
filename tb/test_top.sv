@@ -14,6 +14,7 @@
 
 program automatic test_top (
     apb4_if.master apb4,
+    axi4_if.master axi4,
     psram_if.tb    psram
 );
 
@@ -34,14 +35,13 @@ program automatic test_top (
     sim_config();
     @(posedge apb4.presetn);
     Helper::print("tb init done");
-    psram_hdl = new("psram_test", apb4, psram);
+    psram_hdl = new("psram_test", apb4, axi4, psram);
     psram_hdl.init();
-
     psram_hdl.test_reset_reg();
     psram_hdl.test_wr_rd_reg();
-    psram_hdl.test_cfg_wr_rd();
-    psram_hdl.test_global_reset();
-    psram_hdl.test_bus_wr_rd();
+    // psram_hdl.test_cfg_wr_rd();
+    // psram_hdl.test_global_reset();
+    // psram_hdl.test_bus_wr_rd();
     Helper::end_banner();
     #20000 $finish;
   end

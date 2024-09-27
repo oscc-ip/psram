@@ -230,10 +230,12 @@ module axi4_psram #(
   );
 
 
-  // TODO: add cfg rd oper and set '0' logic
+  // TODO: add cfg rd oper
   always_comb begin
     s_xfer_valid_d = s_xfer_valid_q;
-    if (s_bit_cflg && ~s_xfer_valid_q) begin
+    if (~psram.psram_ce_o) begin
+      s_xfer_valid_d = 1'b0;
+    end else if (s_bit_cflg && ~s_xfer_valid_q) begin
       s_xfer_valid_d = (s_apb4_wr_hdshk && s_apb4_addr == `PSRAM_DATA);
     end else begin
       s_xfer_valid_d = ~s_bit_cflg && s_bus_en;
@@ -279,7 +281,7 @@ module axi4_psram #(
       .bus_wr_data_i  (s_bus_wr_data),
       .bus_wr_mask_i  (s_bus_wr_mask),
       .bus_rd_data_o  (s_bus_rd_data),
-      .xfer_valid_i   (s_xfer_valid_q),        // last for div clk
+      .xfer_valid_i   (s_xfer_valid_q),
       .xfer_rdwr_i    ('0),                    // last for div clks_xfer_rdwr_q
       .xfer_ready_o   (s_xfer_ready),
       .psram_sck_o    (psram.psram_sck_o),
