@@ -15,6 +15,7 @@ SIM_OPTIONS  := -full64 -debug_acc+all  +v2k -sverilog -timescale=1ns/1ps \
 
 SRC_FILE ?=
 SRC_FILE += ../rtl/psram_core.sv
+SRC_FILE += ../rtl/psram_axi4_slv_fsm.sv
 SRC_FILE += ../rtl/axi4_psram.sv
 SRC_FILE += ../model/APM_APS51208N-OB_Xccela_PSRAM_model_v1.5_encrypt.vp_vcs
 SRC_FILE += ../tb/psram_test.sv

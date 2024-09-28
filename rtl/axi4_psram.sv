@@ -10,7 +10,6 @@
 
 `include "register.sv"
 `include "axi4_define.sv"
-`include "axi4_slv_fsm.sv"
 `include "psram_define.sv"
 
 module axi4_psram #(
@@ -45,7 +44,7 @@ module axi4_psram #(
   logic s_xfer_valid_d, s_xfer_valid_q;
   logic s_xfer_rdwr_d, s_xfer_rdwr_q, s_xfer_ready;
   // utils
-  logic s_usr_start, s_bus_rdwr_start, s_bus_wen;
+  logic s_usr_start, s_usr_rdwr_start, s_bus_wen;
   logic s_xfer_done, s_bus_wr_done;
   logic [7:0] s_cfg_rd_data, s_bus_wr_mask, s_bus_wlen;
   logic [8:0] s_xfer_wr_cnt_d, s_xfer_wr_cnt_q;
@@ -169,9 +168,9 @@ module axi4_psram #(
     end
   end
 
-  axi4_slv_fsm #(
+  psram_axi4_slv_fsm #(
       .USR_ADDR_SIZE(USR_ADDR_SIZE)
-  ) u_axi4_slv_fsm (
+  ) u_psram_axi4_slv_fsm (
       .aclk            (axi4.aclk),
       .aresetn         (axi4.aresetn),
       .awid            (axi4.awid),
@@ -219,7 +218,7 @@ module axi4_psram #(
       .rvalid          (axi4.rvalid),
       .rready          (axi4.rready),
       .usr_start_o     (s_usr_start),
-      .usr_rdwr_start_o(s_bus_rdwr_start),
+      .usr_rdwr_start_o(s_usr_rdwr_start),
       .usr_wen_o       (s_bus_wen),
       .usr_wlen_o      (s_bus_wlen),
       .usr_addr_o      (s_axi_bus_addr),
@@ -242,7 +241,7 @@ module axi4_psram #(
     end else if (s_bit_cflg && ~s_xfer_valid_q) begin
       s_xfer_valid_d = (s_apb4_wr_hdshk && s_apb4_addr == `PSRAM_DATA);
     end else if (~s_bit_cflg) begin
-      s_xfer_valid_d = s_bus_rdwr_start;
+      s_xfer_valid_d = s_usr_rdwr_start;
     end
   end
   dffr #(1) u_xfer_valid_dffr (
