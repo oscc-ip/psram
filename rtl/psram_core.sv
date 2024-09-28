@@ -95,6 +95,7 @@ module psram_core (
     endcase
   end
   // due to set one-time in init phase, set `div_valid_i` to `0` is ok
+  // when div_valid_i == 1, inter cnt reg will set to '0'
   clk_int_div_simple #(
       .DIV_VALUE_WIDTH (8),
       .DONE_DELAY_WIDTH(3)
@@ -102,7 +103,7 @@ module psram_core (
       .clk_i      (clk_i),
       .rst_n_i    (rst_n_i),
       .div_i      (s_div_val),
-      .div_valid_i(1'b0),        // when div_valid_i == 1, inter cnt reg will set to '0'
+      .div_valid_i(1'b0),
       .div_ready_o(),
       .div_done_o (),
       .clk_cnt_o  (s_clk_cnt),
@@ -205,7 +206,9 @@ module psram_core (
   // when in INST, ADDR or xDATA phase, ddr mode
   // otherwise in sdr mode
   always_comb begin
-    if (s_fsm_state_q == `PSRAM_FSM_INST  || s_fsm_state_q == `PSRAM_FSM_ADDR ||
+    if (s_fsm_state_q == `PSRAM_FSM_IDLE) begin
+      s_psram_clk_trg = 1'b1;
+    end else if (s_fsm_state_q == `PSRAM_FSM_INST  || s_fsm_state_q == `PSRAM_FSM_ADDR ||
         s_fsm_state_q == `PSRAM_FSM_WDATA || s_fsm_state_q == `PSRAM_FSM_RDATA) begin
       s_psram_clk_trg = s_clk_cnt == 0 || s_clk_cnt == 2;
     end else begin

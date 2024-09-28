@@ -223,7 +223,7 @@ module axi4_psram #(
       .s_usr_dat_o    (s_bus_wr_data),
       .s_usr_dat_i    (s_bus_rd_data),
       .s_usr_awready_i(s_xfer_ready),
-      .s_usr_wready_i ('0),
+      .s_usr_wready_i (), // BUG: need to only keep one cycle
       .s_usr_bvalid_i (1'b1),
       .s_usr_arready_i(s_xfer_ready),
       .s_usr_rvalid_i ('0)
@@ -237,8 +237,8 @@ module axi4_psram #(
       s_xfer_valid_d = 1'b0;
     end else if (s_bit_cflg && ~s_xfer_valid_q) begin
       s_xfer_valid_d = (s_apb4_wr_hdshk && s_apb4_addr == `PSRAM_DATA);
-    end else begin
-      s_xfer_valid_d = ~s_bit_cflg && s_bus_en;
+    end else if (~s_bit_cflg) begin
+      s_xfer_valid_d = s_bus_en;
     end
   end
   dffr #(1) u_xfer_valid_dffr (
