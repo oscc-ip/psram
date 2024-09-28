@@ -45,8 +45,10 @@ module axi4_psram #(
   logic s_xfer_valid_d, s_xfer_valid_q;
   logic s_xfer_rdwr_d, s_xfer_rdwr_q, s_xfer_ready;
   // utils
-  logic s_bus_en, s_bus_wen;
-  logic [7:0] s_cfg_rd_data, s_bus_wr_mask;
+  logic s_usr_start, s_bus_rdwr_start, s_bus_wen;
+  logic s_xfer_done, s_bus_wr_done;
+  logic [7:0] s_cfg_rd_data, s_bus_wr_mask, s_bus_wlen;
+  logic [8:0] s_xfer_wr_cnt_d, s_xfer_wr_cnt_q;
   logic [22:0] s_axi_bus_addr;
   logic [31:0] s_bus_addr;
   logic [63:0] s_bus_wr_data, s_bus_rd_data;
@@ -170,63 +172,65 @@ module axi4_psram #(
   axi4_slv_fsm #(
       .USR_ADDR_SIZE(USR_ADDR_SIZE)
   ) u_axi4_slv_fsm (
-      .aclk           (axi4.aclk),
-      .aresetn        (axi4.aresetn),
-      .awid           (axi4.awid),
-      .awaddr         (axi4.awaddr),
-      .awlen          (axi4.awlen),
-      .awsize         (axi4.awsize),
-      .awburst        (axi4.awburst),
-      .awlock         (axi4.awlock),
-      .awcache        (axi4.awcache),
-      .awprot         (axi4.awprot),
-      .awqos          (axi4.awqos),
-      .awregion       (axi4.awregion),
-      .awuser         (axi4.awuser),
-      .awvalid        (axi4.awvalid),
-      .awready        (axi4.awready),
-      .wdata          (axi4.wdata),
-      .wstrb          (axi4.wstrb),
-      .wlast          (axi4.wlast),
-      .wuser          (axi4.wuser),
-      .wvalid         (axi4.wvalid),
-      .wready         (axi4.wready),
-      .bid            (axi4.bid),
-      .bresp          (axi4.bresp),
-      .buser          (axi4.buser),
-      .bvalid         (axi4.bvalid),
-      .bready         (axi4.bready),
-      .arid           (axi4.arid),
-      .araddr         (axi4.araddr),
-      .arlen          (axi4.arlen),
-      .arsize         (axi4.arsize),
-      .arburst        (axi4.arburst),
-      .arlock         (axi4.arlock),
-      .arcache        (axi4.arcache),
-      .arprot         (axi4.arprot),
-      .arqos          (axi4.arqos),
-      .arregion       (axi4.arregion),
-      .aruser         (axi4.aruser),
-      .arvalid        (axi4.arvalid),
-      .arready        (axi4.arready),
-      .rid            (axi4.rid),
-      .rdata          (axi4.rdata),
-      .rresp          (axi4.rresp),
-      .rlast          (axi4.rlast),
-      .ruser          (axi4.ruser),
-      .rvalid         (axi4.rvalid),
-      .rready         (axi4.rready),
-      .s_usr_en_o     (s_bus_en),
-      .s_usr_wen_o    (s_bus_wen),
-      .s_usr_addr_o   (s_axi_bus_addr),
-      .s_usr_bm_o     (s_bus_wr_mask),
-      .s_usr_dat_o    (s_bus_wr_data),
-      .s_usr_dat_i    (s_bus_rd_data),
-      .s_usr_awready_i(s_xfer_ready),
-      .s_usr_wready_i (), // BUG: need to only keep one cycle
-      .s_usr_bvalid_i (1'b1),
-      .s_usr_arready_i(s_xfer_ready),
-      .s_usr_rvalid_i ('0)
+      .aclk            (axi4.aclk),
+      .aresetn         (axi4.aresetn),
+      .awid            (axi4.awid),
+      .awaddr          (axi4.awaddr),
+      .awlen           (axi4.awlen),
+      .awsize          (axi4.awsize),
+      .awburst         (axi4.awburst),
+      .awlock          (axi4.awlock),
+      .awcache         (axi4.awcache),
+      .awprot          (axi4.awprot),
+      .awqos           (axi4.awqos),
+      .awregion        (axi4.awregion),
+      .awuser          (axi4.awuser),
+      .awvalid         (axi4.awvalid),
+      .awready         (axi4.awready),
+      .wdata           (axi4.wdata),
+      .wstrb           (axi4.wstrb),
+      .wlast           (axi4.wlast),
+      .wuser           (axi4.wuser),
+      .wvalid          (axi4.wvalid),
+      .wready          (axi4.wready),
+      .bid             (axi4.bid),
+      .bresp           (axi4.bresp),
+      .buser           (axi4.buser),
+      .bvalid          (axi4.bvalid),
+      .bready          (axi4.bready),
+      .arid            (axi4.arid),
+      .araddr          (axi4.araddr),
+      .arlen           (axi4.arlen),
+      .arsize          (axi4.arsize),
+      .arburst         (axi4.arburst),
+      .arlock          (axi4.arlock),
+      .arcache         (axi4.arcache),
+      .arprot          (axi4.arprot),
+      .arqos           (axi4.arqos),
+      .arregion        (axi4.arregion),
+      .aruser          (axi4.aruser),
+      .arvalid         (axi4.arvalid),
+      .arready         (axi4.arready),
+      .rid             (axi4.rid),
+      .rdata           (axi4.rdata),
+      .rresp           (axi4.rresp),
+      .rlast           (axi4.rlast),
+      .ruser           (axi4.ruser),
+      .rvalid          (axi4.rvalid),
+      .rready          (axi4.rready),
+      .usr_start_o     (s_usr_start),
+      .usr_rdwr_start_o(s_bus_rdwr_start),
+      .usr_wen_o       (s_bus_wen),
+      .usr_wlen_o      (s_bus_wlen),
+      .usr_addr_o      (s_axi_bus_addr),
+      .usr_bm_o        (s_bus_wr_mask),
+      .usr_dat_o       (s_bus_wr_data),
+      .usr_dat_i       (s_bus_rd_data),
+      .usr_awready_i   (1'b1),
+      .usr_wready_i    (s_xfer_ready),
+      .usr_bvalid_i    (s_bus_wr_done),
+      .usr_arready_i   (1'b1),
+      .usr_rvalid_i    ('0)
   );
 
 
@@ -238,7 +242,7 @@ module axi4_psram #(
     end else if (s_bit_cflg && ~s_xfer_valid_q) begin
       s_xfer_valid_d = (s_apb4_wr_hdshk && s_apb4_addr == `PSRAM_DATA);
     end else if (~s_bit_cflg) begin
-      s_xfer_valid_d = s_bus_en;
+      s_xfer_valid_d = s_bus_rdwr_start;
     end
   end
   dffr #(1) u_xfer_valid_dffr (
@@ -248,10 +252,27 @@ module axi4_psram #(
       s_xfer_valid_q
   );
 
+  assign s_bus_wr_done = s_xfer_wr_cnt_q == s_bus_wlen + 1'b1;
+  always_comb begin
+    s_xfer_wr_cnt_d = s_xfer_wr_cnt_q;
+    if (s_usr_start) s_xfer_wr_cnt_d = '0;
+    else if (s_xfer_done) begin
+      s_xfer_wr_cnt_d = s_xfer_wr_cnt_q + 1'b1;
+    end
+  end
+  dffr #(9) u_xfer_wr_cnt_dffr (
+      axi4.aclk,
+      axi4.aresetn,
+      s_xfer_wr_cnt_d,
+      s_xfer_wr_cnt_q
+  );
+
   // TODO: add axi4 wr/rd oper
   always_comb begin
     s_xfer_rdwr_d = s_xfer_rdwr_q;
-    if (s_bit_cflg && ~s_xfer_rdwr_q) begin  // HACK:
+    if (~psram.psram_ce_o) begin
+      s_xfer_rdwr_d = s_xfer_rdwr_q;
+    end else if (s_bit_cflg && ~s_xfer_rdwr_q) begin
       s_xfer_rdwr_d = ~(s_apb4_wr_hdshk && s_apb4_addr == `PSRAM_DATA);
     end else begin
       s_xfer_rdwr_d = ~s_bit_cflg && ~s_bus_wen;
@@ -284,6 +305,7 @@ module axi4_psram #(
       .xfer_valid_i   (s_xfer_valid_q),
       .xfer_rdwr_i    ('0),                    // last for div clks_xfer_rdwr_q
       .xfer_ready_o   (s_xfer_ready),
+      .xfer_done_o    (s_xfer_done),
       .psram_sck_o    (psram.psram_sck_o),
       .psram_ce_o     (psram.psram_ce_o),
       .psram_io_en_o  (psram.psram_io_en_o),

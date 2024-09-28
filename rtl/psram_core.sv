@@ -27,6 +27,7 @@
 // See the Mulan PSL v2 for more details.
 
 `include "shift_reg.sv"
+`include "edge_det.sv"
 `include "clk_int_div.sv"
 `include "psram_define.sv"
 
@@ -51,7 +52,8 @@ module psram_core (
     output logic [63:0] bus_rd_data_o,
     input  logic        xfer_valid_i,
     input  logic        xfer_rdwr_i,
-    output logic        xfer_ready_o,
+    output logic        xfer_ready_o,    // keep many cycles
+    output logic        xfer_done_o,     // keep one clk_i cycles
     output logic        psram_sck_o,
     output logic        psram_ce_o,
     output logic [ 7:0] psram_io_en_o,
@@ -289,4 +291,13 @@ module psram_core (
       s_wr_mask_d,
       s_wr_mask_q
   );
+
+
+  edge_det_sync_re u_xfer_done_edge_det_sync_re (
+      .clk_i  (clk_i),
+      .rst_n_i(rst_n_i),
+      .dat_i  (xfer_ready_o),
+      .re_o   (xfer_done_o)
+  );
+
 endmodule

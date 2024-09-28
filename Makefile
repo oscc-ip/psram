@@ -24,6 +24,7 @@ SRC_FILE += ../tb/axi4_psram_tb.sv
 SIM_INC ?=
 SIM_INC += +incdir+../rtl/
 SIM_INC += +incdir+../../common/rtl/
+SIM_INC += +incdir+../../common/rtl/cdc
 SIM_INC += +incdir+../../common/rtl/tech
 SIM_INC += +incdir+../../common/rtl/clkrst
 SIM_INC += +incdir+../../common/rtl/verif
