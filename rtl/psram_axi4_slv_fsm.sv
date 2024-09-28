@@ -124,10 +124,18 @@ module psram_axi4_slv_fsm #(
   axi4_req_t s_axi_req_d, s_axi_req_q;
   axi4_fsm_t s_state_d, s_state_q;
   logic [7:0] s_trans_cnt_d, s_trans_cnt_q;
-  logic [    `AXI4_ADDR_WIDTH-1:0] s_trans_nxt_addr;
+  logic [    `AXI4_ADDR_WIDTH-1:0] s_xfer_nxt_addr;
   logic [`AXI4_ADDR_OFT_WIDTH-1:0] s_oft_addr;
+  logic [USR_ADDR_WIDTH-`AXI4_DATA_BLOG-1:0] s_usr_addr_d, s_usr_addr_q;
+  logic [`AXI4_WSTRB_WIDTH-1:0] s_usr_bm_d, s_usr_bm_q;
+  logic [`AXI4_DATA_WIDTH-1:0] s_usr_wr_dat_d, s_usr_wr_dat_q;
 
-  assign s_trans_nxt_addr = {s_axi_req_q.addr[`AXI4_ADDR_WIDTH-1:`AXI4_ADDR_OFT_WIDTH], s_oft_addr};
+  // reg
+  assign usr_addr_o      = s_usr_addr_q;
+  assign usr_bm_o        = s_usr_bm_q;
+  assign usr_dat_o       = s_usr_wr_dat_q;
+
+  assign s_xfer_nxt_addr = {s_axi_req_q.addr[`AXI4_ADDR_WIDTH-1:`AXI4_ADDR_OFT_WIDTH], s_oft_addr};
   axi4_addr_gen u_axi4_addr_gen (
       .alen_i  (s_axi_req_q.len),
       .asize_i (s_axi_req_q.size),
@@ -139,17 +147,17 @@ module psram_axi4_slv_fsm #(
   always_comb begin
     s_state_d        = s_state_q;
     s_axi_req_d      = s_axi_req_q;
-    s_axi_req_d.addr = s_trans_nxt_addr;
+    s_axi_req_d.addr = s_xfer_nxt_addr;
     s_trans_cnt_d    = s_trans_cnt_q;
-    // usr
-    usr_dat_o        = wdata;
-    usr_bm_o         = wstrb;
+    s_usr_addr_d     = s_usr_addr_q;
+    s_usr_bm_d       = s_usr_bm_q;
+    s_usr_wr_dat_d   = s_usr_wr_dat_q;
+    // port
     usr_start_o      = '0;
     usr_rdwr_start_o = '0;
     usr_wen_o        = '0;
     usr_wlen_o       = '0;
-    usr_addr_o       = '0;
-
+    // const
     rdata            = usr_dat_i;
     rresp            = '0;
     rlast            = '0;
@@ -163,15 +171,17 @@ module psram_axi4_slv_fsm #(
       IDLE: begin
         if (arvalid && arready) begin
           s_axi_req_d   = {arid, araddr, arlen, arsize, arburst};
-          usr_addr_o    = araddr[USR_ADDR_WIDTH-1:`AXI4_DATA_BLOG];
+          s_usr_addr_d  = araddr[USR_ADDR_WIDTH-1:`AXI4_DATA_BLOG];
           usr_start_o   = 1'b1;
           s_trans_cnt_d = 1;
           s_state_d     = READ;
         end else if (awvalid && awready) begin
-          s_axi_req_d = {awid, awaddr, awlen, awsize, awburst};
-          usr_addr_o  = awaddr[USR_ADDR_WIDTH-1:`AXI4_DATA_BLOG];
-          usr_start_o = 1'b1;
-          usr_wlen_o  = awlen;
+          usr_start_o    = 1'b1;
+          usr_wlen_o     = awlen;
+          s_axi_req_d    = {awid, awaddr, awlen, awsize, awburst};
+          s_usr_bm_d     = wstrb;
+          s_usr_wr_dat_d = wdata;
+          s_usr_addr_d   = awaddr[USR_ADDR_WIDTH-1:`AXI4_DATA_BLOG];
           if (wvalid && wready) begin
             usr_rdwr_start_o = 1'b1;
             usr_wen_o        = 1'b1;
@@ -181,15 +191,15 @@ module psram_axi4_slv_fsm #(
       end
 
       READ: begin
-        usr_addr_o = s_axi_req_q.addr[USR_ADDR_WIDTH-1:`AXI4_DATA_BLOG];
-        rdata      = usr_dat_i;
-        rid        = s_axi_req_q.id;
-        rlast      = (s_trans_cnt_q == s_axi_req_q.len + 1);
+        s_usr_addr_d = s_axi_req_q.addr[USR_ADDR_WIDTH-1:`AXI4_DATA_BLOG];
+        rdata        = usr_dat_i;
+        rid          = s_axi_req_q.id;
+        rlast        = (s_trans_cnt_q == s_axi_req_q.len + 1);
         if (rready && rvalid) begin
           usr_rdwr_start_o = 1'b1;
           case (s_axi_req_q.burst)
-            FIXED, INCR: usr_addr_o = s_axi_req_q.addr[USR_ADDR_WIDTH-1:`AXI4_DATA_BLOG];
-            default:     usr_addr_o = '0;
+            FIXED, INCR: s_usr_addr_d = s_axi_req_q.addr[USR_ADDR_WIDTH-1:`AXI4_DATA_BLOG];
+            default:     s_usr_addr_d = '0;
           endcase
           if (rlast) s_state_d = IDLE;
           s_trans_cnt_d = s_trans_cnt_q + 1;
@@ -201,9 +211,11 @@ module psram_axi4_slv_fsm #(
         if (wvalid && wready) begin
           usr_rdwr_start_o = 1'b1;
           usr_wen_o        = 1'b1;
+          s_usr_bm_d       = wstrb;
+          s_usr_wr_dat_d   = wdata;
           case (s_axi_req_q.burst)
-            FIXED, INCR: usr_addr_o = s_axi_req_q.addr[USR_ADDR_WIDTH-1:`AXI4_DATA_BLOG];
-            default:     usr_addr_o = '0;
+            FIXED, INCR: s_usr_addr_d = s_axi_req_q.addr[USR_ADDR_WIDTH-1:`AXI4_DATA_BLOG];
+            default:     s_usr_addr_d = '0;
           endcase
           if (wlast) s_state_d = SEND_B;
         end
@@ -231,4 +243,25 @@ module psram_axi4_slv_fsm #(
       s_axi_req_q <= #`REGISTER_DELAY s_axi_req_d;
     end
   end
+
+  dffr #(USR_ADDR_WIDTH - `AXI4_DATA_BLOG) u_usr_addr_dffr (
+      aclk,
+      aresetn,
+      s_usr_addr_d,
+      s_usr_addr_q
+  );
+
+  dffr #(`AXI4_WSTRB_WIDTH) u_usr_bm_dffr (
+      aclk,
+      aresetn,
+      s_usr_bm_d,
+      s_usr_bm_q
+  );
+
+  dffr #(`AXI4_DATA_WIDTH) u_usr_wr_dat_dffr (
+      aclk,
+      aresetn,
+      s_usr_wr_dat_d,
+      s_usr_wr_dat_q
+  );
 endmodule
