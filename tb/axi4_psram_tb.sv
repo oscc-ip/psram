@@ -37,6 +37,7 @@ module axi4_psram_tb ();
 
   initial begin
     sim_reset(40);
+    #1000000 $finish;
   end
 
   apb4_if u_apb4_if (
