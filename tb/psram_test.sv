@@ -63,9 +63,11 @@ task automatic PSRAMTest::init_common_cfg(bit cfg_mode);
   bit [31:0] wait_val = '0;
   // wr cmd
   this.apb4_write(`PSRAM_CTRL_ADDR, ctrl_val);
-  ctrl_val[1]    = cfg_mode;
-  ctrl_val[3:2]  = 2'b00;  // div4
-  ctrl_val[11:4] = 8'd3;  // delay 3 cycle
+  ctrl_val[1]     = cfg_mode;
+  ctrl_val[3:2]   = 2'b00;  // div4
+  ctrl_val[11:4]  = 8'd3;  // delay 3 cycle
+  ctrl_val[13:12] = 2'd0;
+  ctrl_val[15:14] = 2'd0;
   this.apb4_write(`PSRAM_CTRL_ADDR, ctrl_val);
   cmd_val[7:0]  = 8'hA0;
   cmd_val[15:8] = 8'h20;
@@ -75,6 +77,8 @@ task automatic PSRAMTest::init_common_cfg(bit cfg_mode);
   wait_val[7:0]  = 8'h03;
   wait_val[15:8] = 8'h07;
   this.apb4_write(`PSRAM_WAIT_ADDR, wait_val);
+  ctrl_val[0] = 1'b1;  // en core clk
+  this.apb4_write(`PSRAM_CTRL_ADDR, ctrl_val);
 endtask
 
 task automatic PSRAMTest::test_cfg_wr_rd();
@@ -105,8 +109,9 @@ task automatic PSRAMTest::test_bus_wr_rd();
   this.init_common_cfg(1'b0);
 
   trans_wdata = {};
-  trans_baddr = 32'hE000_0000;  // test
-  trans_addr  = trans_baddr + 8 * 2;
+  trans_baddr = 32'hE000_0000;  // test 0x000-0x7FF
+  // trans_addr  = trans_baddr + 8 * 2;
+  trans_addr  = trans_baddr + 32'h010310;
   trans_size  = 3'd3;
   trans_type  = `AXI4_BURST_TYPE_INCR;
   trans_len   = 8'd1;
