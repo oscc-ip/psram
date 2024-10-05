@@ -37,7 +37,7 @@ module axi4_psram #(
   logic [`PSRAM_STAT_WIDTH-1:0] s_psram_stat_d, s_psram_stat_q;
   // bitfield
   logic s_bit_en, s_bit_cflg, s_bit_done;
-  logic [1:0] s_bit_pscr, s_bit_crm;
+  logic [1:0] s_bit_pscr, s_bit_crm, s_bit_tcsp, s_bit_tchd;
   logic [7:0] s_bit_recy, s_bit_wcmd, s_bit_rcmd, s_bit_ccmd;
   logic [7:0] s_bit_wlc, s_bit_rlc;
   // other
@@ -57,6 +57,8 @@ module axi4_psram #(
   assign s_bit_cflg      = s_psram_ctrl_q[1];
   assign s_bit_pscr      = s_psram_ctrl_q[3:2];
   assign s_bit_recy      = s_psram_ctrl_q[11:4];
+  assign s_bit_tcsp      = s_psram_ctrl_q[13:12];
+  assign s_bit_tchd      = s_psram_ctrl_q[15:14];
   assign s_bit_wcmd      = s_psram_cmd_q[7:0];
   assign s_bit_rcmd      = s_psram_cmd_q[15:8];
   assign s_bit_ccmd      = s_psram_ccmd_q[7:0];
@@ -286,9 +288,12 @@ module axi4_psram #(
   psram_core u_psram_core (
       .clk_i          (axi4.aclk),
       .rst_n_i        (axi4.aresetn),
+      .cfg_en_i       (s_bit_en),
       .cfg_cflg_i     (s_bit_cflg),
       .cfg_pscr_i     (s_bit_pscr),
       .cfg_recy_i     (s_bit_recy),
+      .cfg_tcsp_i     (s_bit_tcsp),
+      .cfg_tchd_i     (s_bit_tchd),
       .cfg_wcmd_i     (s_bit_wcmd),
       .cfg_rcmd_i     (s_bit_rcmd),
       .cfg_ccmd_i     (s_bit_ccmd),

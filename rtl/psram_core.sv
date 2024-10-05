@@ -35,9 +35,12 @@
 module psram_core (
     input  logic        clk_i,
     input  logic        rst_n_i,
+    input  logic        cfg_en_i,
     input  logic        cfg_cflg_i,
     input  logic [ 1:0] cfg_pscr_i,
     input  logic [ 7:0] cfg_recy_i,
+    input  logic [ 1:0] cfg_tcsp_i,
+    input  logic [ 1:0] cfg_tchd_i,
     input  logic [ 7:0] cfg_wcmd_i,
     input  logic [ 7:0] cfg_rcmd_i,
     input  logic [ 7:0] cfg_ccmd_i,
@@ -105,7 +108,7 @@ module psram_core (
       .clk_i      (clk_i),
       .rst_n_i    (rst_n_i),
       .div_i      (s_div_val),
-      .div_valid_i(1'b0),
+      .div_valid_i(~cfg_en_i),
       .div_ready_o(),
       .div_done_o (),
       .clk_cnt_o  (s_clk_cnt),
@@ -123,7 +126,7 @@ module psram_core (
       `PSRAM_FSM_IDLE: begin
         if (xfer_valid_i) begin
           s_fsm_state_d = `PSRAM_FSM_TCSP;
-          s_fsm_cnt_d   = 8'd0;
+          s_fsm_cnt_d   = {6'd0, cfg_tcsp_i};
         end
       end
       `PSRAM_FSM_TCSP: begin
@@ -137,7 +140,7 @@ module psram_core (
       `PSRAM_FSM_INST: begin
         if (s_fsm_cnt_q == '0) begin
           s_fsm_state_d = `PSRAM_FSM_ADDR;
-          s_fsm_cnt_d   = 8'd4;
+          s_fsm_cnt_d   = 8'd3;
         end else begin
           s_fsm_cnt_d = s_fsm_cnt_q - 1'b1;
         end
@@ -169,7 +172,7 @@ module psram_core (
       `PSRAM_FSM_WDATA: begin
         if (s_fsm_cnt_q == '0) begin
           s_fsm_state_d = `PSRAM_FSM_TCHD;
-          s_fsm_cnt_d   = '0;
+          s_fsm_cnt_d   = {6'd0, cfg_tchd_i};
         end else begin
           s_fsm_cnt_d = s_fsm_cnt_q - 1'b1;
         end
@@ -177,7 +180,7 @@ module psram_core (
       `PSRAM_FSM_RDATA: begin  // NOTE: need to capture the posedge of the dqs
         if (s_fsm_cnt_q == '0) begin
           s_fsm_state_d = `PSRAM_FSM_TCHD;
-          s_fsm_cnt_d   = '0;
+          s_fsm_cnt_d   = {6'd0, cfg_tchd_i};
         end else begin
           s_fsm_cnt_d = s_fsm_cnt_q - 1'b1;
         end
