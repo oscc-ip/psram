@@ -66,16 +66,16 @@ task automatic PSRAMTest::init_common_cfg(bit cfg_mode);
   ctrl_val[1]     = cfg_mode;
   ctrl_val[3:2]   = 2'b00;  // div4
   ctrl_val[11:4]  = 8'd3;  // delay 3 cycle
-  ctrl_val[13:12] = 2'd0;
-  ctrl_val[15:14] = 2'd0;
+  ctrl_val[13:12] = 2'd1;  // tcsp
+  ctrl_val[15:14] = 2'd1;  // tchd
   this.apb4_write(`PSRAM_CTRL_ADDR, ctrl_val);
   cmd_val[7:0]  = 8'hA0;
   cmd_val[15:8] = 8'h20;
   this.apb4_write(`PSRAM_CMD_ADDR, cmd_val);
   ccmd_val[7:0] = 8'hC0;
   this.apb4_write(`PSRAM_CCMD_ADDR, ccmd_val);
-  wait_val[7:0]  = 8'h03;
-  wait_val[15:8] = 8'h07;
+  wait_val[7:0]  = 8'h03 - 8'h1;
+  wait_val[15:8] = 8'h07 - 8'h1;
   this.apb4_write(`PSRAM_WAIT_ADDR, wait_val);
   ctrl_val[0] = 1'b1;  // en core clk
   this.apb4_write(`PSRAM_CTRL_ADDR, ctrl_val);
@@ -102,22 +102,27 @@ task automatic PSRAMTest::test_bus_wr_rd();
   bit [                 2:0] trans_size;
   bit [                 1:0] trans_type;
   int                        trans_len;
+  bit [`AXI4_DATA_WIDTH-1:0] trans_val;
   int                        trans_id;
 
   repeat (400 * 3) @(posedge this.apb4_mstr.apb4.pclk);
   $display("%t === [test psram bus wr rd] ===", $time);
+  this.init_common_cfg(1'b1);
   this.init_common_cfg(1'b0);
 
   trans_wdata = {};
   trans_baddr = 32'hE000_0000;  // test 0x000-0x7FF
   // trans_addr  = trans_baddr + 8 * 2;
-  trans_addr  = trans_baddr + 32'h010310;
+  // E000_0000 + 0001_0310 = E001_0310
+  trans_addr  = trans_baddr + 32'h0001_0310;
   trans_size  = 3'd3;
   trans_type  = `AXI4_BURST_TYPE_INCR;
-  trans_len   = 8'd1;
+  trans_len   = 8'd2;
   trans_id    = '1;
   for (int i = 0; i < trans_len; i++) begin
-    trans_wdata.push_back({$random, $random});
+    trans_val = {$random, $random};
+    $display("%d: wr_val: %0h", i, trans_val);
+    trans_wdata.push_back(trans_val);
   end
 
   this.axi4_write(.id(trans_id), .addr(trans_addr), .len(trans_len), .size(trans_size),
