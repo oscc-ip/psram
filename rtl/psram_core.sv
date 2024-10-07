@@ -67,7 +67,7 @@ module psram_core (
     output logic        psram_dqs_out_o
 );
 
-  logic s_psram_clk_trg, s_psram_clk;
+  logic s_clk_trg, s_psram_clk_trg, s_psram_clk;
   logic [3:0] s_fsm_state_d, s_fsm_state_q;
   logic [7:0] s_fsm_cnt_d, s_fsm_cnt_q, s_div_val;
   logic [7:0] s_wr_shift_data;
@@ -99,7 +99,6 @@ module psram_core (
       `PSRAM_PSCR_DIV32: s_div_val = 8'd31;
     endcase
   end
-  // due to set one-time in init phase, set `div_valid_i` to `0` is ok
   // when div_valid_i == 1, inter cnt reg will set to '0'
   clk_int_div_simple #(
       .DIV_VALUE_WIDTH (8),
@@ -108,7 +107,7 @@ module psram_core (
       .clk_i      (clk_i),
       .rst_n_i    (rst_n_i),
       .div_i      (s_div_val),
-      .div_valid_i(~cfg_en_i),
+      .div_valid_i(~(cfg_en_i && ~psram_ce_o)),
       .div_ready_o(),
       .div_done_o (),
       .clk_cnt_o  (s_clk_cnt),
@@ -132,49 +131,49 @@ module psram_core (
       `PSRAM_FSM_TCSP: begin
         if (s_fsm_cnt_q == '0) begin
           s_fsm_state_d = `PSRAM_FSM_INST;
-          s_fsm_cnt_d   = 8'd2;
+          s_fsm_cnt_d   = 8'd1;
         end else begin
-          s_fsm_cnt_d = s_fsm_cnt_q - 1'b1;
+          if (s_clk_cnt == 8'd3) s_fsm_cnt_d = s_fsm_cnt_q - 1'b1;
         end
       end
       `PSRAM_FSM_INST: begin
-        if (s_fsm_cnt_q == '0) begin
+        if (s_fsm_cnt_q == '0 && s_clk_cnt == 8'd0) begin
           s_fsm_state_d = `PSRAM_FSM_ADDR;
           s_fsm_cnt_d   = 8'd3;
         end else begin
-          s_fsm_cnt_d = s_fsm_cnt_q - 1'b1;
+          if (s_clk_cnt == 8'd0 || s_clk_cnt == 8'd2) s_fsm_cnt_d = s_fsm_cnt_q - 1'b1;
         end
       end
       `PSRAM_FSM_ADDR: begin
-        if (s_fsm_cnt_q == '0) begin
+        if (s_fsm_cnt_q == '0 && s_clk_cnt == 8'd0) begin
           if (cfg_cflg_i && cfg_ccmd_i == 8'hFF) begin  // FOR GLOBAL RESET CMD
             s_fsm_state_d = `PSRAM_FSM_RECY;
             s_fsm_cnt_d   = cfg_recy_i;
           end else if (cfg_cflg_i && ~xfer_rdwr_i) begin
             s_fsm_state_d = `PSRAM_FSM_WDATA;
-            s_fsm_cnt_d   = 8'd2;  // compose one word for right xfer
+            s_fsm_cnt_d   = 8'd1;  // compose one word for right xfer
           end else begin
             s_fsm_state_d = `PSRAM_FSM_LATN;
             s_fsm_cnt_d   = xfer_rdwr_i ? cfg_rlc_i : cfg_wlc_i;
           end
         end else begin
-          s_fsm_cnt_d = s_fsm_cnt_q - 1'b1;
+          if (s_clk_cnt == 8'd0 || s_clk_cnt == 8'd2) s_fsm_cnt_d = s_fsm_cnt_q - 1'b1;
         end
       end
       `PSRAM_FSM_LATN: begin
-        if (s_fsm_cnt_q == '0) begin
+        if (s_fsm_cnt_q == '0 && s_clk_cnt == 8'd0) begin
           s_fsm_state_d = xfer_rdwr_i ? `PSRAM_FSM_RDATA : `PSRAM_FSM_WDATA;
-          s_fsm_cnt_d   = cfg_cflg_i ? 8'd2 : 8'd7;
+          s_fsm_cnt_d   = cfg_cflg_i ? 8'd1 : 8'd7;
         end else begin
-          s_fsm_cnt_d = s_fsm_cnt_q - 1'b1;
+          if (s_clk_cnt == 8'd3) s_fsm_cnt_d = s_fsm_cnt_q - 1'b1;
         end
       end
       `PSRAM_FSM_WDATA: begin
-        if (s_fsm_cnt_q == '0) begin
+        if (s_fsm_cnt_q == '0 && s_clk_cnt == 8'd0) begin
           s_fsm_state_d = `PSRAM_FSM_TCHD;
           s_fsm_cnt_d   = {6'd0, cfg_tchd_i};
         end else begin
-          s_fsm_cnt_d = s_fsm_cnt_q - 1'b1;
+          if (s_clk_cnt == 8'd0 || s_clk_cnt == 8'd2) s_fsm_cnt_d = s_fsm_cnt_q - 1'b1;
         end
       end
       `PSRAM_FSM_RDATA: begin  // NOTE: need to capture the posedge of the dqs
@@ -186,52 +185,38 @@ module psram_core (
         end
       end
       `PSRAM_FSM_TCHD: begin
-        if (s_fsm_cnt_q == '0) begin
+        if (s_fsm_cnt_q == '0 && s_clk_cnt == 8'd0) begin
           s_fsm_state_d = `PSRAM_FSM_RECY;
           s_fsm_cnt_d   = cfg_recy_i;
         end else begin
-          s_fsm_cnt_d = s_fsm_cnt_q - 1'b1;
+          if (s_clk_cnt == 8'd3) s_fsm_cnt_d = s_fsm_cnt_q - 1'b1;
         end
       end
       `PSRAM_FSM_RECY: begin
-        if (s_fsm_cnt_q == '0) begin
+        if (s_fsm_cnt_q == '0 && s_clk_cnt == 8'd0) begin
           s_fsm_state_d = `PSRAM_FSM_IDLE;
         end else begin
-          s_fsm_cnt_d = s_fsm_cnt_q - 1'b1;
+          if (s_clk_cnt == 8'd3) s_fsm_cnt_d = s_fsm_cnt_q - 1'b1;
         end
       end
       default: begin
         s_fsm_state_d = `PSRAM_FSM_IDLE;
-        s_fsm_cnt_d   = '0;
+        s_fsm_cnt_d   = '1;
       end
     endcase
   end
 
-  // HACK: chg data at 0 or 2 for div4 when ce == 0
-  // when in INST, ADDR or xDATA phase, ddr mode
-  // otherwise in sdr mode
-  always_comb begin
-    if (s_fsm_state_q == `PSRAM_FSM_IDLE) begin
-      s_psram_clk_trg = 1'b1;
-    end else if (s_fsm_state_q == `PSRAM_FSM_INST  || s_fsm_state_q == `PSRAM_FSM_ADDR ||
-        s_fsm_state_q == `PSRAM_FSM_WDATA || s_fsm_state_q == `PSRAM_FSM_RDATA) begin
-      s_psram_clk_trg = s_clk_cnt == 0 || s_clk_cnt == 2;
-    end else begin
-      s_psram_clk_trg = s_clk_cnt == 3;
-    end
-  end
-  dffer #(4) u_fsm_state_dffer (
+  assign s_psram_clk_trg = ~psram_ce_o & s_clk_trg;
+  dffr #(4) u_fsm_state_dffr (
       clk_i,
       rst_n_i,
-      s_psram_clk_trg,
       s_fsm_state_d,
       s_fsm_state_q
   );
 
-  dffer #(8) u_fsm_cnt_dffer (
+  dffrh #(8) u_fsm_cnt_dffrh (
       clk_i,
       rst_n_i,
-      s_psram_clk_trg,
       s_fsm_cnt_d,
       s_fsm_cnt_q
   );
@@ -256,6 +241,18 @@ module psram_core (
     endcase
   end
 
+
+  // TODO: chg data at 0 or 2 for div4 when ce == 0
+  // when in INST, ADDR or xDATA phase, ddr mode
+  // otherwise in sdr mode
+  always_comb begin
+    if (s_fsm_state_q == `PSRAM_FSM_INST  || s_fsm_state_q == `PSRAM_FSM_ADDR ||
+        s_fsm_state_q == `PSRAM_FSM_WDATA || s_fsm_state_q == `PSRAM_FSM_RDATA) begin
+      s_clk_trg = s_clk_cnt == 0 || s_clk_cnt == 2;
+    end else begin
+      s_clk_trg = s_clk_cnt == 3;
+    end
+  end
   // addr shift reg
   always_comb begin
     if (s_fsm_state_q == `PSRAM_FSM_ADDR) s_xfer_addr_d = {s_xfer_addr_q[23:0], 8'd0};
