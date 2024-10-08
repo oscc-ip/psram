@@ -14,7 +14,8 @@
 `include "psram_define.sv"
 
 module axi4_psram_tb ();
-  localparam real CLK_PEROID = 1.25;  // for 800M
+  // localparam real CLK_PEROID = 1.25;  // for 800M
+  localparam real CLK_PEROID = 2.5;  // for 400M
   logic rst_n_i, clk_i;
 
   wire s_psram_sck_pad, s_psram_ce_pad, s_psram_dqs_pad, s_psram_dummy_dqs_pad;
@@ -97,10 +98,10 @@ module axi4_psram_tb ();
   );
 
   // NOTE: inst the verilog model here and this model is privated due to the NDA
-  // psram_model u_psram_model (
-  //     .xCLK  (s_psram_sck_pad),
-  //     .xCEn  (s_psram_ce_pad),
-  //     .xDQSDM({s_psram_dummy_dqs_pad, s_psram_dqs_pad}),
-  //     .xDQ   ({s_psram_dummy_io_pad, s_psram_io_pad})
-  // );
+  psram_model u_psram_model (
+      .xCLK  (s_psram_sck_pad),
+      .xCEn  (s_psram_ce_pad),
+      .xDQSDM({s_psram_dummy_dqs_pad, s_psram_dqs_pad}),
+      .xDQ   ({s_psram_dummy_io_pad, s_psram_io_pad})
+  );
 endmodule

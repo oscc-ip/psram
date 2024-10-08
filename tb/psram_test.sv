@@ -23,6 +23,7 @@ class PSRAMTest extends APB4AXI4Master;
   extern task automatic test_reset_reg();
   extern task automatic test_wr_rd_reg(input bit [31:0] run_times = 1000);
   extern task automatic init_common_cfg(bit cfg_mode, bit global_reset = 1'b0);
+  extern task automatic init_device();
   extern task automatic test_global_reset();
   extern task automatic test_cfg_wr();
   extern task automatic test_cfg_rd();
@@ -82,6 +83,14 @@ task automatic PSRAMTest::init_common_cfg(bit cfg_mode, bit global_reset = 1'b0)
   this.apb4_write(`PSRAM_WAIT_ADDR, wait_val);
   ctrl_val[0] = 1'b1;  // en core clk
   this.apb4_write(`PSRAM_CTRL_ADDR, ctrl_val);
+endtask
+
+task automatic PSRAMTest::init_device();
+  $display("%t === [init psram init device] ===", $time);
+  // for 400M clock, need delay >= 150us, 150 * 1000 / 2.5 = 60000
+  for (int i = 0; i < 60000 / 400; i++) begin
+    repeat (400) @(posedge this.apb4_mstr.apb4.pclk);
+  end
 endtask
 
 task automatic PSRAMTest::test_global_reset();
@@ -155,12 +164,4 @@ task automatic PSRAMTest::test_bus_wr_rd();
   repeat (400 * 2) @(posedge this.apb4_mstr.apb4.pclk);
 endtask
 
-
-// task automatic PSRAMTest::test_global_reset();
-//   $display("%t === [test psram global reset] ===", $time);
-// endtask
-
-// task automatic PSRAMTest::test_bus_wr_rd();
-//   $display("%t === [test psram bus wr rd] ===", $time);
-// endtask
 `endif
