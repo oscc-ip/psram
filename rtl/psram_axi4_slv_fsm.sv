@@ -77,26 +77,19 @@ module psram_axi4_slv_fsm #(
     output logic                                      rvalid,
     input  logic                                      rready,
     // user interface
-    output logic                                      usr_start_o,
-    output logic                                      usr_rdwr_start_o,
+    output logic                                      usr_xfer_start_o,
     output logic                                      usr_wen_o,
     output logic [                               7:0] usr_wlen_o,
     output logic [USR_ADDR_WIDTH-`AXI4_DATA_BLOG-1:0] usr_addr_o,
     output logic [             `AXI4_WSTRB_WIDTH-1:0] usr_bm_o,
     output logic [              `AXI4_DATA_WIDTH-1:0] usr_dat_o,
     input  logic [              `AXI4_DATA_WIDTH-1:0] usr_dat_i,
-    input  logic                                      usr_awready_i,
     input  logic                                      usr_wready_i,
-    input  logic                                      usr_bvalid_i,
-    input  logic                                      usr_arready_i,
     input  logic                                      usr_rvalid_i
 );
 
-  assign awready = usr_awready_i;
-  assign wready  = usr_wready_i;
-  assign bvalid  = usr_bvalid_i;
-  assign arready = usr_arready_i;
-  assign rvalid  = usr_rvalid_i;
+  assign wready = usr_wready_i;
+  assign rvalid = usr_rvalid_i;
   // AXI has the following rules governing the use of bursts:
   // - a burst must not cross a 4KB address boundary
   typedef enum logic [1:0] {
@@ -145,47 +138,55 @@ module psram_axi4_slv_fsm #(
   );
 
   always_comb begin
+    // reg
     s_state_d        = s_state_q;
     s_axi_req_d      = s_axi_req_q;
-    s_axi_req_d.addr = s_xfer_nxt_addr;
+    s_axi_req_d.addr = s_axi_req_q.addr;
     s_trans_cnt_d    = s_trans_cnt_q;
     s_usr_addr_d     = s_usr_addr_q;
     s_usr_bm_d       = s_usr_bm_q;
     s_usr_wr_dat_d   = s_usr_wr_dat_q;
     // port
-    usr_start_o      = '0;
-    usr_rdwr_start_o = '0;
+    usr_xfer_start_o = '0;
     usr_wen_o        = '0;
     usr_wlen_o       = '0;
     // const
+    arready          = '0;
     rdata            = usr_dat_i;
     rresp            = '0;
     rlast            = '0;
     rid              = s_axi_req_q.id;
     ruser            = '0;
+    awready          = '0;
+    bvalid           = '0;
     bresp            = '0;
     bid              = '0;
     buser            = '0;
 
     case (s_state_q)
       IDLE: begin
-        if (arvalid && arready) begin
+        if (arvalid) begin
+          arready       = 1'b1;
           s_axi_req_d   = {arid, araddr, arlen, arsize, arburst};
           s_usr_addr_d  = araddr[USR_ADDR_WIDTH-1:`AXI4_DATA_BLOG];
-          usr_start_o   = 1'b1;
           s_trans_cnt_d = 1;
           s_state_d     = READ;
-        end else if (awvalid && awready) begin
-          usr_start_o    = 1'b1;
-          usr_wlen_o     = awlen;
-          s_axi_req_d    = {awid, awaddr, awlen, awsize, awburst};
-          s_usr_bm_d     = wstrb;
-          s_usr_wr_dat_d = wdata;
-          s_usr_addr_d   = awaddr[USR_ADDR_WIDTH-1:`AXI4_DATA_BLOG];
-          if (wvalid && wready) begin
-            usr_rdwr_start_o = 1'b1;
+
+        end else if (awvalid) begin
+          awready      = 1'b1;
+          s_axi_req_d  = {awid, awaddr, awlen, awsize, awburst};
+          s_usr_addr_d = awaddr[USR_ADDR_WIDTH-1:`AXI4_DATA_BLOG];
+
+          if (wvalid) begin
+            usr_wlen_o       = awlen;
             usr_wen_o        = 1'b1;
-            s_state_d        = (wlast) ? SEND_B : WRITE;
+            usr_xfer_start_o = ~wlast;
+            s_usr_bm_d       = wstrb;
+            s_usr_wr_dat_d   = wdata;
+          end
+
+          if (wvalid && wready) begin
+            s_state_d = (wlast) ? SEND_B : WRITE;
           end else s_state_d = WRITE;
         end
       end
@@ -196,7 +197,7 @@ module psram_axi4_slv_fsm #(
         rid          = s_axi_req_q.id;
         rlast        = (s_trans_cnt_q == s_axi_req_q.len + 1);
         if (rready && rvalid) begin
-          usr_rdwr_start_o = 1'b1;
+          usr_xfer_start_o = 1'b1;
           case (s_axi_req_q.burst)
             FIXED, INCR: s_usr_addr_d = s_axi_req_q.addr[USR_ADDR_WIDTH-1:`AXI4_DATA_BLOG];
             default:     s_usr_addr_d = '0;
@@ -207,21 +208,26 @@ module psram_axi4_slv_fsm #(
       end
 
       WRITE: begin
-        usr_wlen_o = s_axi_req_q.len;
-        if (wvalid && wready) begin
-          usr_rdwr_start_o = 1'b1;
+        if (wvalid) begin
+          usr_wlen_o       = s_axi_req_q.len;
           usr_wen_o        = 1'b1;
+          usr_xfer_start_o = ~wlast;
           s_usr_bm_d       = wstrb;
           s_usr_wr_dat_d   = wdata;
-          case (s_axi_req_q.burst)
-            FIXED, INCR: s_usr_addr_d = s_axi_req_q.addr[USR_ADDR_WIDTH-1:`AXI4_DATA_BLOG];
-            default:     s_usr_addr_d = '0;
-          endcase
-          if (wlast) s_state_d = SEND_B;
+
+          if (wready) begin
+            s_axi_req_d.addr = s_xfer_nxt_addr;
+            case (s_axi_req_q.burst)
+              FIXED, INCR: s_usr_addr_d = s_xfer_nxt_addr[USR_ADDR_WIDTH-1:`AXI4_DATA_BLOG];
+              default:     s_usr_addr_d = '0;
+            endcase
+            if (wlast) s_state_d = SEND_B;
+          end
         end
       end
       SEND_B: begin
-        bid = s_axi_req_q.id;
+        bid    = s_axi_req_q.id;
+        bvalid = 1'b1;
         if (bready && bvalid) s_state_d = IDLE;
       end
     endcase

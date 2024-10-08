@@ -193,10 +193,10 @@ module psram_core (
         end
       end
       `PSRAM_FSM_RECY: begin
-        if (s_fsm_cnt_q == '0 && s_clk_cnt == 8'd0) begin
+        if (s_fsm_cnt_q == '0) begin
           s_fsm_state_d = `PSRAM_FSM_IDLE;
         end else begin
-          if (s_clk_cnt == 8'd3) s_fsm_cnt_d = s_fsm_cnt_q - 1'b1;
+          s_fsm_cnt_d = s_fsm_cnt_q - 1'b1;
         end
       end
       default: begin

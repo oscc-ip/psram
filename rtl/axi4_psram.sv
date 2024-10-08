@@ -44,10 +44,9 @@ module axi4_psram #(
   logic s_xfer_valid_d, s_xfer_valid_q;
   logic s_xfer_rdwr_d, s_xfer_rdwr_q, s_xfer_ready;
   // utils
-  logic s_usr_start, s_usr_rdwr_start, s_bus_wen;
-  logic s_xfer_done, s_bus_wr_done;
+  logic s_bus_xfer_start, s_bus_wen;
+  logic s_xfer_done;
   logic [7:0] s_cfg_rd_data, s_bus_wr_mask, s_bus_wlen;
-  logic [8:0] s_xfer_wr_cnt_d, s_xfer_wr_cnt_q;
   logic [22:0] s_axi_bus_addr;
   logic [31:0] s_bus_addr;
   logic [63:0] s_bus_wr_data, s_bus_rd_data;
@@ -219,18 +218,14 @@ module axi4_psram #(
       .ruser           (axi4.ruser),
       .rvalid          (axi4.rvalid),
       .rready          (axi4.rready),
-      .usr_start_o     (s_usr_start),
-      .usr_rdwr_start_o(s_usr_rdwr_start),
+      .usr_xfer_start_o(s_bus_xfer_start),
       .usr_wen_o       (s_bus_wen),
       .usr_wlen_o      (s_bus_wlen),
       .usr_addr_o      (s_axi_bus_addr),
       .usr_bm_o        (s_bus_wr_mask),
       .usr_dat_o       (s_bus_wr_data),
       .usr_dat_i       (s_bus_rd_data),
-      .usr_awready_i   (1'b1),
-      .usr_wready_i    (s_xfer_ready),
-      .usr_bvalid_i    (s_bus_wr_done),
-      .usr_arready_i   (1'b1),
+      .usr_wready_i    (s_xfer_done),
       .usr_rvalid_i    ('0)
   );
 
@@ -243,7 +238,7 @@ module axi4_psram #(
     end else if (s_bit_cflg && ~s_xfer_valid_q) begin
       s_xfer_valid_d = (s_apb4_wr_hdshk && s_apb4_addr == `PSRAM_DATA);
     end else if (~s_bit_cflg) begin
-      s_xfer_valid_d = s_usr_rdwr_start;
+      s_xfer_valid_d = s_bus_xfer_start;
     end
   end
   dffr #(1) u_xfer_valid_dffr (
@@ -251,21 +246,6 @@ module axi4_psram #(
       axi4.aresetn,
       s_xfer_valid_d,
       s_xfer_valid_q
-  );
-
-  assign s_bus_wr_done = s_xfer_wr_cnt_q == s_bus_wlen + 1'b1;
-  always_comb begin
-    s_xfer_wr_cnt_d = s_xfer_wr_cnt_q;
-    if (s_usr_start) s_xfer_wr_cnt_d = '0;
-    else if (s_xfer_done) begin
-      s_xfer_wr_cnt_d = s_xfer_wr_cnt_q + 1'b1;
-    end
-  end
-  dffr #(9) u_xfer_wr_cnt_dffr (
-      axi4.aclk,
-      axi4.aresetn,
-      s_xfer_wr_cnt_d,
-      s_xfer_wr_cnt_q
   );
 
   // TODO: add axi4 wr/rd oper
