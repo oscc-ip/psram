@@ -146,10 +146,7 @@ module psram_core (
       end
       `PSRAM_FSM_ADDR: begin
         if (s_fsm_cnt_q == '0 && s_clk_cnt == 8'd0) begin
-          if (cfg_cflg_i && cfg_ccmd_i == 8'hFF) begin  // FOR GLOBAL RESET CMD
-            s_fsm_state_d = `PSRAM_FSM_RECY;
-            s_fsm_cnt_d   = cfg_recy_i;
-          end else if (cfg_cflg_i && ~xfer_rdwr_i) begin
+          if (cfg_cflg_i && ~xfer_rdwr_i) begin
             s_fsm_state_d = `PSRAM_FSM_WDATA;
             s_fsm_cnt_d   = 8'd1;  // compose one word for right xfer
           end else begin
