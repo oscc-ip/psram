@@ -110,12 +110,14 @@ module psram_core (
         s_sdr_mid_high_trg = s_clk_cnt == 8'd5;
       end
       `PSRAM_PSCR_DIV16: begin
-        s_sdr_mid_low_trg  = s_clk_cnt == 8'd0;
-        s_sdr_mid_high_trg = s_clk_cnt == 8'd3;
+        s_sdr_low_trg      = s_clk_cnt == 8'd3;
+        s_sdr_mid_low_trg  = s_clk_cnt == 8'd3;
+        s_sdr_mid_high_trg = s_clk_cnt == 8'd11;
       end
       `PSRAM_PSCR_DIV32: begin
-        s_sdr_mid_low_trg  = s_clk_cnt == 8'd0;
-        s_sdr_mid_high_trg = s_clk_cnt == 8'd3;
+        s_sdr_low_trg      = s_clk_cnt == 8'd7;  // TODO: right?
+        s_sdr_mid_low_trg  = s_clk_cnt == 8'd7;
+        s_sdr_mid_high_trg = s_clk_cnt == 8'd23;
       end
     endcase
   end
