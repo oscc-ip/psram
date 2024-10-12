@@ -77,6 +77,7 @@ module psram_core (
   logic [7:0] s_wr_mask_d, s_wr_mask_q;
   logic [7:0] s_clk_cnt;
   logic s_ce_fsm_low_bound, s_ce_fsm_high_bound;
+  logic s_sdr_low_trg, s_sdr_mid_low_trg, s_sdr_mid_high_trg, s_sdr_fe_trg, s_ddr_trg;
 
 
   assign xfer_ready_o        = s_fsm_state_q == `PSRAM_FSM_IDLE;
@@ -89,7 +90,35 @@ module psram_core (
   assign psram_io_out_o      = s_wr_shift_data;
   assign psram_dqs_en_o      = s_fsm_state_q == `PSRAM_FSM_WDATA;
   assign psram_dqs_out_o     = s_fsm_state_q == `PSRAM_FSM_WDATA ? s_wr_shift_mask : '0;
+  // trg mode
 
+  assign s_sdr_fe_trg        = s_clk_cnt == s_div_val;
+  assign s_ddr_trg           = s_sdr_mid_low_trg || s_sdr_mid_high_trg;
+  always_comb begin
+    s_sdr_low_trg      = s_clk_cnt == 8'd0;
+    s_sdr_mid_low_trg  = s_clk_cnt == 8'd0;
+    s_sdr_mid_high_trg = s_clk_cnt == 8'd2;
+    unique case (cfg_pscr_i)
+      `PSRAM_PSCR_DIV4: begin
+        s_sdr_low_trg      = s_clk_cnt == 8'd0;
+        s_sdr_mid_low_trg  = s_clk_cnt == 8'd0;
+        s_sdr_mid_high_trg = s_clk_cnt == 8'd2;
+      end
+      `PSRAM_PSCR_DIV8: begin
+        s_sdr_low_trg      = s_clk_cnt == 8'd1;
+        s_sdr_mid_low_trg  = s_clk_cnt == 8'd1;
+        s_sdr_mid_high_trg = s_clk_cnt == 8'd5;
+      end
+      `PSRAM_PSCR_DIV16: begin
+        s_sdr_mid_low_trg  = s_clk_cnt == 8'd0;
+        s_sdr_mid_high_trg = s_clk_cnt == 8'd3;
+      end
+      `PSRAM_PSCR_DIV32: begin
+        s_sdr_mid_low_trg  = s_clk_cnt == 8'd0;
+        s_sdr_mid_high_trg = s_clk_cnt == 8'd3;
+      end
+    endcase
+  end
   always_comb begin
     s_div_val = 8'd3;
     unique case (cfg_pscr_i)
@@ -131,21 +160,22 @@ module psram_core (
       `PSRAM_FSM_TCSP: begin
         if (s_fsm_cnt_q == '0) begin
           s_fsm_state_d = `PSRAM_FSM_INST;
-          s_fsm_cnt_d   = 8'd1;
+          if (cfg_pscr_i == `PSRAM_PSCR_DIV4) s_fsm_cnt_d = 8'd1;
+          else s_fsm_cnt_d = 8'd2;
         end else begin
-          if (s_clk_cnt == 8'd3) s_fsm_cnt_d = s_fsm_cnt_q - 1'b1;
+          if (s_sdr_fe_trg) s_fsm_cnt_d = s_fsm_cnt_q - 1'b1;
         end
       end
       `PSRAM_FSM_INST: begin
-        if (s_fsm_cnt_q == '0 && s_clk_cnt == 8'd0) begin
+        if (s_fsm_cnt_q == '0 && s_sdr_low_trg) begin
           s_fsm_state_d = `PSRAM_FSM_ADDR;
           s_fsm_cnt_d   = 8'd3;
         end else begin
-          if (s_clk_cnt == 8'd0 || s_clk_cnt == 8'd2) s_fsm_cnt_d = s_fsm_cnt_q - 1'b1;
+          if (s_ddr_trg) s_fsm_cnt_d = s_fsm_cnt_q - 1'b1;
         end
       end
       `PSRAM_FSM_ADDR: begin
-        if (s_fsm_cnt_q == '0 && s_clk_cnt == 8'd0) begin
+        if (s_fsm_cnt_q == '0 && s_sdr_low_trg) begin
           if (cfg_cflg_i && ~xfer_rdwr_i) begin
             s_fsm_state_d = `PSRAM_FSM_WDATA;
             s_fsm_cnt_d   = 8'd1;  // compose one word for right xfer
@@ -154,23 +184,23 @@ module psram_core (
             s_fsm_cnt_d   = xfer_rdwr_i ? cfg_rlc_i : cfg_wlc_i;
           end
         end else begin
-          if (s_clk_cnt == 8'd0 || s_clk_cnt == 8'd2) s_fsm_cnt_d = s_fsm_cnt_q - 1'b1;
+          if (s_ddr_trg) s_fsm_cnt_d = s_fsm_cnt_q - 1'b1;
         end
       end
       `PSRAM_FSM_LATN: begin
-        if (s_fsm_cnt_q == '0 && s_clk_cnt == 8'd0) begin
+        if (s_fsm_cnt_q == '0 && s_sdr_low_trg) begin
           s_fsm_state_d = xfer_rdwr_i ? `PSRAM_FSM_RDATA : `PSRAM_FSM_WDATA;
           s_fsm_cnt_d   = cfg_cflg_i ? 8'd1 : 8'd7;
         end else begin
-          if (s_clk_cnt == 8'd3) s_fsm_cnt_d = s_fsm_cnt_q - 1'b1;
+          if (s_sdr_fe_trg) s_fsm_cnt_d = s_fsm_cnt_q - 1'b1;
         end
       end
       `PSRAM_FSM_WDATA: begin
-        if (s_fsm_cnt_q == '0 && s_clk_cnt == 8'd0) begin
+        if (s_fsm_cnt_q == '0 && s_sdr_low_trg) begin
           s_fsm_state_d = `PSRAM_FSM_TCHD;
           s_fsm_cnt_d   = {6'd0, cfg_tchd_i};
         end else begin
-          if (s_clk_cnt == 8'd0 || s_clk_cnt == 8'd2) s_fsm_cnt_d = s_fsm_cnt_q - 1'b1;
+          if (s_ddr_trg) s_fsm_cnt_d = s_fsm_cnt_q - 1'b1;
         end
       end
       `PSRAM_FSM_RDATA: begin  // NOTE: need to capture the posedge of the dqs
@@ -182,11 +212,11 @@ module psram_core (
         end
       end
       `PSRAM_FSM_TCHD: begin
-        if (s_fsm_cnt_q == '0 && s_clk_cnt == 8'd0) begin
+        if (s_fsm_cnt_q == '0 && s_sdr_low_trg) begin
           s_fsm_state_d = `PSRAM_FSM_RECY;
           s_fsm_cnt_d   = cfg_recy_i;
         end else begin
-          if (s_clk_cnt == 8'd3) s_fsm_cnt_d = s_fsm_cnt_q - 1'b1;
+          if (s_sdr_fe_trg) s_fsm_cnt_d = s_fsm_cnt_q - 1'b1;
         end
       end
       `PSRAM_FSM_RECY: begin
@@ -243,11 +273,10 @@ module psram_core (
   // when in INST, ADDR or xDATA phase, ddr mode
   // otherwise in sdr mode
   always_comb begin
-    if (s_fsm_state_q == `PSRAM_FSM_INST  || s_fsm_state_q == `PSRAM_FSM_ADDR ||
-        s_fsm_state_q == `PSRAM_FSM_WDATA || s_fsm_state_q == `PSRAM_FSM_RDATA) begin
-      s_clk_trg = s_clk_cnt == 0 || s_clk_cnt == 2;
+    if (s_fsm_state_q == `PSRAM_FSM_ADDR || s_fsm_state_q == `PSRAM_FSM_WDATA || s_fsm_state_q == `PSRAM_FSM_RDATA) begin
+      s_clk_trg = s_ddr_trg;
     end else begin
-      s_clk_trg = s_clk_cnt == 3;
+      s_clk_trg = s_sdr_fe_trg;
     end
   end
   // addr shift reg
