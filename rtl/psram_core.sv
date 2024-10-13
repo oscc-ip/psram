@@ -70,16 +70,20 @@ module psram_core (
   logic s_clk_trg, s_psram_clk_trg, s_psram_clk;
   logic [3:0] s_fsm_state_d, s_fsm_state_q;
   logic [7:0] s_fsm_cnt_d, s_fsm_cnt_q, s_div_val;
-  logic [7:0] s_wr_shift_data;
-  logic       s_wr_shift_mask;
+  logic [7:0] s_wr_shift_data, s_rd_shift_data;
+  logic s_wr_shift_mask;
   logic [31:0] s_xfer_addr_d, s_xfer_addr_q;
-  logic [63:0] s_wr_data_d, s_wr_data_q;
+  logic [63:0] s_wr_data_d, s_wr_data_q, s_rd_data_d, s_rd_data_q;
   logic [7:0] s_wr_mask_d, s_wr_mask_q;
   logic [7:0] s_clk_cnt;
   logic s_ce_fsm_low_bound, s_ce_fsm_high_bound;
   logic s_sdr_low_trg, s_sdr_mid_low_trg, s_sdr_mid_high_trg, s_sdr_fe_trg, s_ddr_trg;
+  // dqs capture
+  logic s_dqs_re_trg, s_dqs_fe_trg;
 
-
+  // utils
+  assign cfg_data_o          = s_rd_data_q[7:0];
+  assign bus_rd_data_o       = s_rd_data_q;
   assign xfer_ready_o        = s_fsm_state_q == `PSRAM_FSM_IDLE;
   assign s_ce_fsm_low_bound  = s_fsm_state_q > `PSRAM_FSM_TCSP;
   assign s_ce_fsm_high_bound = s_fsm_state_q < `PSRAM_FSM_TCHD;
@@ -115,7 +119,7 @@ module psram_core (
         s_sdr_mid_high_trg = s_clk_cnt == 8'd11;
       end
       `PSRAM_PSCR_DIV32: begin
-        s_sdr_low_trg      = s_clk_cnt == 8'd7;  // TODO: right?
+        s_sdr_low_trg      = s_clk_cnt == 8'd7;
         s_sdr_mid_low_trg  = s_clk_cnt == 8'd7;
         s_sdr_mid_high_trg = s_clk_cnt == 8'd23;
       end
@@ -205,12 +209,12 @@ module psram_core (
           if (s_ddr_trg) s_fsm_cnt_d = s_fsm_cnt_q - 1'b1;
         end
       end
-      `PSRAM_FSM_RDATA: begin  // NOTE: need to capture the posedge of the dqs
+      `PSRAM_FSM_RDATA: begin
         if (s_fsm_cnt_q == '0) begin
           s_fsm_state_d = `PSRAM_FSM_TCHD;
           s_fsm_cnt_d   = {6'd0, cfg_tchd_i};
         end else begin
-          s_fsm_cnt_d = s_fsm_cnt_q - 1'b1;
+          if (s_dqs_re_trg || s_dqs_fe_trg) s_fsm_cnt_d = s_fsm_cnt_q - 1'b1;
         end
       end
       `PSRAM_FSM_TCHD: begin
@@ -271,7 +275,6 @@ module psram_core (
   end
 
 
-  // TODO: chg data at 0 or 2 for div4 when ce == 0
   // when in INST, ADDR or xDATA phase, ddr mode
   // otherwise in sdr mode
   always_comb begin
@@ -321,9 +324,31 @@ module psram_core (
   );
 
 
-  // rd oper
+  // capture dqs
+  edge_det_sync #(
+      .DATA_WIDTH(1)
+  ) u_dqs_edge_det_sync (
+      .clk_i  (clk_i),
+      .rst_n_i(rst_n_i),
+      .dat_i  (psram_dqs_in_i),
+      .re_o   (s_dqs_re_trg),
+      .fe_o   (s_dqs_fe_trg)
+  );
 
 
+  always_comb begin
+    s_rd_data_d = s_rd_data_q;
+    if (s_fsm_state_q == `PSRAM_FSM_RDATA && (s_dqs_re_trg || s_dqs_fe_trg)) begin
+      s_rd_data_d = {s_rd_data_q[55:0], psram_io_in_i};
+    end
+  end
+  dffer #(64) u_rd_data_dffer (
+      clk_i,
+      rst_n_i,
+      1'b1,
+      s_rd_data_d,
+      s_rd_data_q
+  );
 
   edge_det_sync_re u_xfer_done_edge_det_sync_re (
       .clk_i  (clk_i),

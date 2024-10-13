@@ -42,7 +42,7 @@ module axi4_psram #(
   logic [7:0] s_bit_wlc, s_bit_rlc;
   // other
   logic s_xfer_valid_d, s_xfer_valid_q;
-  logic s_xfer_rdwr_d, s_xfer_rdwr_q, s_xfer_ready;
+  logic s_xfer_rdwr_d, s_xfer_rdwr_q, s_xfer_ready, s_xfer_ready_re_trg;
   // utils
   logic s_bus_xfer_start, s_bus_wen;
   logic s_xfer_done;
@@ -50,7 +50,8 @@ module axi4_psram #(
   logic [22:0] s_axi_bus_addr;
   logic [31:0] s_bus_addr;
   logic [63:0] s_bus_wr_data, s_bus_rd_data;
-
+  // rd oper
+  logic s_cfg_rd_ready_d, s_cfg_rd_ready_q, s_xfer_rd_valid_trg;
 
   assign s_bit_en        = s_psram_ctrl_q[0];
   assign s_bit_cflg      = s_psram_ctrl_q[1];
@@ -69,7 +70,7 @@ module axi4_psram #(
   assign s_apb4_addr     = apb4.paddr[5:2];
   assign s_apb4_wr_hdshk = apb4.psel && apb4.penable && apb4.pwrite;
   assign s_apb4_rd_hdshk = apb4.psel && apb4.penable && (~apb4.pwrite);
-  assign apb4.pready     = 1'b1;
+  assign apb4.pready     = s_apb4_rd_hdshk && s_apb4_addr == `PSRAM_DATA ? s_cfg_rd_ready_q : 1'b1;
   assign apb4.pslverr    = 1'b0;
 
   // irq
@@ -127,12 +128,15 @@ module axi4_psram #(
   );
 
 
-  assign s_psram_data_en = s_apb4_wr_hdshk && s_apb4_addr == `PSRAM_DATA && s_bit_cflg;
+  assign s_psram_data_en = (s_apb4_wr_hdshk || s_apb4_rd_hdshk) && s_apb4_addr == `PSRAM_DATA && s_bit_cflg;
   always_comb begin
-    if (s_apb4_wr_hdshk && s_apb4_addr == `PSRAM_DATA && s_bit_cflg) begin
-      s_psram_data_d = apb4.pwdata[`PSRAM_DATA_WIDTH-1:0];
-    end else if (s_bit_cflg) begin
-      s_psram_data_d = s_cfg_rd_data;
+    s_psram_data_d = s_psram_data_q;
+    if (s_bit_cflg) begin
+      if (s_apb4_wr_hdshk && s_apb4_addr == `PSRAM_DATA) begin
+        s_psram_data_d = apb4.pwdata[`PSRAM_DATA_WIDTH-1:0];
+      end else if (s_apb4_rd_hdshk && s_apb4_addr == `PSRAM_DATA) begin
+        s_psram_data_d = s_cfg_rd_data;
+      end
     end
   end
   dffer #(`PSRAM_DATA_WIDTH) u_psram_data_dffer (
@@ -152,6 +156,25 @@ module axi4_psram #(
       s_psram_stat_d,
       s_psram_stat_q
   );
+
+
+  edge_det_sync_re #(
+      .DATA_WIDTH(1)
+  ) u_xfer_ready_edge_det_sync_re (
+      .clk_i  (apb4.pclk),
+      .rst_n_i(apb4.presetn),
+      .dat_i  (s_xfer_ready),
+      .re_o   (s_xfer_ready_re_trg)
+  );
+
+  assign s_cfg_rd_ready_d = s_xfer_ready_re_trg;
+  dffr #(1) u_cfg_rd_ready_dffr (
+      apb4.pclk,
+      apb4.presetn,
+      s_cfg_rd_ready_d,
+      s_cfg_rd_ready_q
+  );
+
 
   always_comb begin
     apb4.prdata = '0;
@@ -230,14 +253,23 @@ module axi4_psram #(
   );
 
 
-  // TODO: add cfg rd oper
+  edge_det_sync_re #(
+      .DATA_WIDTH(1)
+  ) u_xfer_rd_valid_edge_det_sync_re (
+      .clk_i  (apb4.pclk),
+      .rst_n_i(apb4.presetn),
+      .dat_i  (s_apb4_rd_hdshk && s_apb4_addr == `PSRAM_DATA),
+      .re_o   (s_xfer_rd_valid_trg)
+  );
+
   always_comb begin
-    s_xfer_valid_d = s_xfer_valid_q;
     if (~psram.psram_ce_o) begin
       s_xfer_valid_d = 1'b0;
-    end else if (s_bit_cflg && ~s_xfer_valid_q) begin
-      s_xfer_valid_d = (s_apb4_wr_hdshk && s_apb4_addr == `PSRAM_DATA);
-    end else if (~s_bit_cflg) begin
+    end else if (s_bit_cflg) begin
+      if (s_apb4_wr_hdshk && s_apb4_addr == `PSRAM_DATA) s_xfer_valid_d = '1;
+      else if (s_xfer_rd_valid_trg) s_xfer_valid_d = '1;
+      else s_xfer_valid_d = '0;
+    end else begin
       s_xfer_valid_d = s_bus_xfer_start;
     end
   end
@@ -253,10 +285,11 @@ module axi4_psram #(
     s_xfer_rdwr_d = s_xfer_rdwr_q;
     if (~psram.psram_ce_o) begin
       s_xfer_rdwr_d = s_xfer_rdwr_q;
-    end else if (s_bit_cflg && ~s_xfer_rdwr_q) begin
-      s_xfer_rdwr_d = ~(s_apb4_wr_hdshk && s_apb4_addr == `PSRAM_DATA);
+    end else if (s_bit_cflg) begin
+      if (s_apb4_wr_hdshk && s_apb4_addr == `PSRAM_DATA) s_xfer_rdwr_d = '0;
+      else if (s_apb4_rd_hdshk && s_apb4_addr == `PSRAM_DATA) s_xfer_rdwr_d = '1;
     end else begin
-      s_xfer_rdwr_d = ~s_bit_cflg && ~s_bus_wen;
+      s_xfer_rdwr_d = ~s_bus_wen;
     end
   end
   dffr #(1) u_xfer_rdwr_dffr (
@@ -287,7 +320,7 @@ module axi4_psram #(
       .bus_wr_mask_i  (s_bus_wr_mask),
       .bus_rd_data_o  (s_bus_rd_data),
       .xfer_valid_i   (s_xfer_valid_q),
-      .xfer_rdwr_i    ('0),                    // last for div clks_xfer_rdwr_q
+      .xfer_rdwr_i    (s_xfer_rdwr_q),
       .xfer_ready_o   (s_xfer_ready),
       .xfer_done_o    (s_xfer_done),
       .psram_sck_o    (psram.psram_sck_o),
