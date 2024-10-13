@@ -39,11 +39,10 @@ program automatic test_top (
     psram_hdl.init();
     psram_hdl.test_reset_reg();
     psram_hdl.test_wr_rd_reg();
-    psram_hdl.init_device();
-    psram_hdl.test_global_reset();
-    // psram_hdl.test_cfg_wr();
-    // psram_hdl.test_cfg_rd();
-    // psram_hdl.test_bus_wr_rd();
+    psram_hdl.psram_init_device();
+    psram_hdl.psram_global_reset();
+    // make sure 'psram_init_device' is done
+    psram_hdl.test_cfg_reg();
     Helper::end_banner();
     #20000 $finish;
   end

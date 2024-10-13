@@ -22,11 +22,12 @@ class PSRAMTest extends APB4AXI4Master;
                       virtual axi4_if.master axi4, virtual psram_if.tb psram);
   extern task automatic test_reset_reg();
   extern task automatic test_wr_rd_reg(input bit [31:0] run_times = 1000);
-  extern task automatic init_common_cfg(bit cfg_mode, bit global_reset = 1'b0);
-  extern task automatic init_device();
-  extern task automatic test_global_reset();
-  extern task automatic test_cfg_wr();
-  extern task automatic test_cfg_rd();
+  extern task automatic init_common_cfg(bit cfg_mode, bit cfg_wr, bit global_reset = 1'b0);
+  extern task automatic psram_init_device();
+  extern task automatic psram_global_reset();
+  extern task automatic psram_cfg_wr(input bit [7:0] addr, input bit [7:0] data);
+  extern task automatic psram_cfg_rd(input bit [7:0] addr, ref bit [7:0] data[]);
+  extern task automatic test_cfg_reg();
   extern task automatic test_bus_wr_rd();
 endclass
 
@@ -60,14 +61,14 @@ task automatic PSRAMTest::test_wr_rd_reg(input bit [31:0] run_times = 1000);
   // verilog_format: on
 endtask
 
-task automatic PSRAMTest::init_common_cfg(bit cfg_mode, bit global_reset = 1'b0);
+task automatic PSRAMTest::init_common_cfg(bit cfg_mode, bit cfg_wr, bit global_reset = 1'b0);
   bit [31:0] ctrl_val = '0, cmd_val = '0, ccmd_val = '0;
   bit [31:0] wait_val = '0;
   // wr cmd
   this.apb4_write(`PSRAM_CTRL_ADDR, ctrl_val);
   ctrl_val[1]     = cfg_mode;
   ctrl_val[3:2]   = 2'b01;  // div8
-  ctrl_val[11:4]  = 8'd3;  // delay 3 cycle
+  ctrl_val[11:4]  = 8'd13;  // delay 3 cycle
   ctrl_val[13:12] = 2'd1;  // tcsp
   ctrl_val[15:14] = 2'd1;  // tchd
   this.apb4_write(`PSRAM_CTRL_ADDR, ctrl_val);
@@ -76,7 +77,9 @@ task automatic PSRAMTest::init_common_cfg(bit cfg_mode, bit global_reset = 1'b0)
   this.apb4_write(`PSRAM_CMD_ADDR, cmd_val);
 
   if (global_reset) ccmd_val[7:0] = 8'hFF;
-  else ccmd_val[7:0] = 8'hC0;
+  else if (cfg_wr) ccmd_val[7:0] = 8'hC0;
+  else ccmd_val[7:0] = 8'h40;
+
   this.apb4_write(`PSRAM_CCMD_ADDR, ccmd_val);
   wait_val[7:0]  = 8'd5 - 8'd1;
   wait_val[15:8] = 8'd5 - 8'd1;
@@ -85,7 +88,7 @@ task automatic PSRAMTest::init_common_cfg(bit cfg_mode, bit global_reset = 1'b0)
   this.apb4_write(`PSRAM_CTRL_ADDR, ctrl_val);
 endtask
 
-task automatic PSRAMTest::init_device();
+task automatic PSRAMTest::psram_init_device();
   $display("%t === [init psram init device] ===", $time);
   // for 800M clock, need delay >= 150us, 150 * 1000 / 1.25 = 60000 * 2
   for (int i = 0; i < 120000 / 400; i++) begin
@@ -93,39 +96,50 @@ task automatic PSRAMTest::init_device();
   end
 endtask
 
-task automatic PSRAMTest::test_global_reset();
-  bit [31:0] addr_val = '0, data_val = '0;
-  repeat (400 * 3) @(posedge this.apb4_mstr.apb4.pclk);
+task automatic PSRAMTest::psram_global_reset();
+  repeat (400) @(posedge this.apb4_mstr.apb4.pclk);
   $display("%t === [test psram global reset] ===", $time);
+  this.init_common_cfg(1'b1, 1'b0, 1'b1);
+
+  this.apb4_write(`PSRAM_ADDR_ADDR, 32'd0);
+  this.apb4_write(`PSRAM_DATA_ADDR, 32'd0);
+
+  repeat (400) @(posedge this.apb4_mstr.apb4.pclk);
+endtask
+
+task automatic PSRAMTest::psram_cfg_wr(input bit [7:0] addr, input bit [7:0] data);
+  // repeat (400) @(posedge this.apb4_mstr.apb4.pclk);
+  // $display("%t === [test psram cfg wr] ===", $time);
   this.init_common_cfg(1'b1, 1'b1);
-  addr_val[7:0] = 8'h00;
-  this.apb4_write(`PSRAM_ADDR_ADDR, addr_val);
-  data_val[7:0] = 8'b000_00_000;
-  this.apb4_write(`PSRAM_DATA_ADDR, data_val);
 
-  repeat (400 * 2) @(posedge this.apb4_mstr.apb4.pclk);
+  this.apb4_write(`PSRAM_ADDR_ADDR, {24'd0, addr});
+  this.apb4_write(`PSRAM_DATA_ADDR, data);
+  repeat (100) @(posedge this.apb4_mstr.apb4.pclk);
 endtask
 
-task automatic PSRAMTest::test_cfg_wr();
-  bit [31:0] addr_val = '0, data_val = '0;
-  repeat (400 * 3) @(posedge this.apb4_mstr.apb4.pclk);
-  $display("%t === [test psram cfg wr] ===", $time);
-  this.init_common_cfg(1'b1);
-
-  addr_val[7:0] = 8'h04;
-  this.apb4_write(`PSRAM_ADDR_ADDR, addr_val);
-  // data_val[7:0] = 8'b00_1_100_00;
-  data_val[7:0] = 8'b010_00_000;
-  this.apb4_write(`PSRAM_DATA_ADDR, data_val);
-  repeat (400 * 2) @(posedge this.apb4_mstr.apb4.pclk);
+task automatic PSRAMTest::psram_cfg_rd(input bit [7:0] addr, ref bit [7:0] data[]);
+  // repeat (400) @(posedge this.apb4_mstr.apb4.pclk);
+  // $display("%t === [test psram cfg rd] ===", $time);
+  this.init_common_cfg(1'b1, 1'b0);
+  repeat (50) @(posedge this.apb4_mstr.apb4.pclk);
+  this.apb4_write(`PSRAM_ADDR_ADDR, {24'd0, addr});
+  this.apb4_read(`PSRAM_DATA_ADDR);
+  data[0] = this.apb4_mstr.rd_data[7:0];
 endtask
 
-task automatic PSRAMTest::test_cfg_rd();
-  bit [31:0] addr_val = '0, data_val = '0;
-  repeat (400 * 3) @(posedge this.apb4_mstr.apb4.pclk);
-  $display("%t === [test psram cfg rd] ===", $time);
-  this.init_common_cfg(1'b1);
-  repeat (400 * 2) @(posedge this.apb4_mstr.apb4.pclk);
+task automatic PSRAMTest::test_cfg_reg();
+  bit [7:0] recv[] = {0}, addr;
+  $display("%t === [test cfg reg] ===", $time);
+
+  this.psram_cfg_wr(8'h0, 8'b00_0_010_10);
+  this.psram_cfg_rd(8'h0, recv);
+  $display("addr: %d data: %d", 8'h0, recv[0]);
+
+  // for (int i = 0; i < 9; i++) begin
+  //   if (i == 5 || i == 6 || i == 7) continue;
+  //   this.psram_cfg_rd(i, recv);
+  //   $display("addr: %d data: %d", i, recv[0]);
+  // end
 endtask
 
 task automatic PSRAMTest::test_bus_wr_rd();
@@ -140,8 +154,8 @@ task automatic PSRAMTest::test_bus_wr_rd();
 
   repeat (400 * 3) @(posedge this.apb4_mstr.apb4.pclk);
   $display("%t === [test psram bus wr rd] ===", $time);
-  this.init_common_cfg(1'b1);
-  this.init_common_cfg(1'b0);
+  this.init_common_cfg(1'b1, 1'b1);
+  this.init_common_cfg(1'b0, 1'b1);
 
   trans_wdata = {};
   trans_baddr = 32'hE000_0000;  // test 0x000-0x7FF
