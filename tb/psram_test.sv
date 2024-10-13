@@ -152,7 +152,7 @@ task automatic PSRAMTest::test_bus_wr_rd();
   bit [`AXI4_DATA_WIDTH-1:0] trans_val;
   int                        trans_id;
 
-  repeat (400 * 3) @(posedge this.apb4_mstr.apb4.pclk);
+  repeat (400) @(posedge this.apb4_mstr.apb4.pclk);
   $display("%t === [test psram bus wr rd] ===", $time);
   this.init_common_cfg(1'b1, 1'b1);
   this.init_common_cfg(1'b0, 1'b1);
@@ -175,7 +175,9 @@ task automatic PSRAMTest::test_bus_wr_rd();
   this.axi4_write(.id(trans_id), .addr(trans_addr), .len(trans_len), .size(trans_size),
                   .burst(trans_type), .data(trans_wdata));
 
-  repeat (400 * 2) @(posedge this.apb4_mstr.apb4.pclk);
+  repeat (400) @(posedge this.apb4_mstr.apb4.pclk);
+  this.axi4_read(.id(trans_id), .addr(trans_addr), .len(trans_len), .size(trans_size),
+                 .burst(trans_type));
 endtask
 
 `endif
