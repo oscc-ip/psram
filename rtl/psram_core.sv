@@ -321,6 +321,10 @@ module psram_core (
   );
 
 
+  // rd oper
+
+
+
   edge_det_sync_re u_xfer_done_edge_det_sync_re (
       .clk_i  (clk_i),
       .rst_n_i(rst_n_i),

@@ -66,7 +66,7 @@ task automatic PSRAMTest::init_common_cfg(bit cfg_mode, bit global_reset = 1'b0)
   // wr cmd
   this.apb4_write(`PSRAM_CTRL_ADDR, ctrl_val);
   ctrl_val[1]     = cfg_mode;
-  ctrl_val[3:2]   = 2'b11;  // div[4-32]
+  ctrl_val[3:2]   = 2'b01;  // div8
   ctrl_val[11:4]  = 8'd3;  // delay 3 cycle
   ctrl_val[13:12] = 2'd1;  // tcsp
   ctrl_val[15:14] = 2'd1;  // tchd
@@ -78,8 +78,8 @@ task automatic PSRAMTest::init_common_cfg(bit cfg_mode, bit global_reset = 1'b0)
   if (global_reset) ccmd_val[7:0] = 8'hFF;
   else ccmd_val[7:0] = 8'hC0;
   this.apb4_write(`PSRAM_CCMD_ADDR, ccmd_val);
-  wait_val[7:0]  = 8'h03 - 8'h1;
-  wait_val[15:8] = 8'h07 - 8'h1;
+  wait_val[7:0]  = 8'd5 - 8'd1;
+  wait_val[15:8] = 8'd5 - 8'd1;
   this.apb4_write(`PSRAM_WAIT_ADDR, wait_val);
   ctrl_val[0] = 1'b1;  // en core clk
   this.apb4_write(`PSRAM_CTRL_ADDR, ctrl_val);
@@ -87,8 +87,8 @@ endtask
 
 task automatic PSRAMTest::init_device();
   $display("%t === [init psram init device] ===", $time);
-  // for 400M clock, need delay >= 150us, 150 * 1000 / 2.5 = 60000
-  for (int i = 0; i < 60000 / 400; i++) begin
+  // for 800M clock, need delay >= 150us, 150 * 1000 / 1.25 = 60000 * 2
+  for (int i = 0; i < 120000 / 400; i++) begin
     repeat (400) @(posedge this.apb4_mstr.apb4.pclk);
   end
 endtask
