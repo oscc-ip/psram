@@ -249,7 +249,7 @@ module axi4_psram #(
       .usr_dat_o       (s_bus_wr_data),
       .usr_dat_i       (s_bus_rd_data),
       .usr_wready_i    (s_xfer_done),
-      .usr_rvalid_i    ('0)
+      .usr_rvalid_i    (s_xfer_done)
   );
 
 
@@ -280,7 +280,6 @@ module axi4_psram #(
       s_xfer_valid_q
   );
 
-  // TODO: add axi4 wr/rd oper
   always_comb begin
     s_xfer_rdwr_d = s_xfer_rdwr_q;
     if (~psram.psram_ce_o) begin

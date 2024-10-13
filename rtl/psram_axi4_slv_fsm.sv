@@ -192,18 +192,20 @@ module psram_axi4_slv_fsm #(
       end
 
       READ: begin
-        s_usr_addr_d = s_axi_req_q.addr[USR_ADDR_WIDTH-1:`AXI4_DATA_BLOG];
-        rdata        = usr_dat_i;
-        rid          = s_axi_req_q.id;
-        rlast        = (s_trans_cnt_q == s_axi_req_q.len + 1);
-        if (rready && rvalid) begin
-          usr_xfer_start_o = 1'b1;
-          case (s_axi_req_q.burst)
-            FIXED, INCR: s_usr_addr_d = s_axi_req_q.addr[USR_ADDR_WIDTH-1:`AXI4_DATA_BLOG];
-            default:     s_usr_addr_d = '0;
-          endcase
-          if (rlast) s_state_d = IDLE;
-          s_trans_cnt_d = s_trans_cnt_q + 1;
+        if (rready) begin
+          rid              = s_axi_req_q.id;
+          rlast            = s_trans_cnt_q == s_axi_req_q.len + 1;
+          usr_xfer_start_o = ~rlast;
+
+          if (rvalid) begin
+            s_axi_req_d.addr = s_xfer_nxt_addr;
+            case (s_axi_req_q.burst)
+              FIXED, INCR: s_usr_addr_d = s_xfer_nxt_addr[USR_ADDR_WIDTH-1:`AXI4_DATA_BLOG];
+              default:     s_usr_addr_d = '0;
+            endcase
+            if (rlast) s_state_d = IDLE;
+            s_trans_cnt_d = s_trans_cnt_q + 1;
+          end
         end
       end
 
