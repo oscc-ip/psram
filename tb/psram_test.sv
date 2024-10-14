@@ -104,7 +104,8 @@ task automatic PSRAMTest::psram_global_reset();
   this.apb4_write(`PSRAM_ADDR_ADDR, 32'd0);
   this.apb4_write(`PSRAM_DATA_ADDR, 32'd0);
 
-  repeat (400) @(posedge this.apb4_mstr.apb4.pclk);
+  //2000/1.25 = 1600
+  repeat (2000) @(posedge this.apb4_mstr.apb4.pclk);  // delay >= 2us=2000ns
 endtask
 
 task automatic PSRAMTest::psram_cfg_wr(input bit [7:0] addr, input bit [7:0] data);
@@ -131,15 +132,11 @@ task automatic PSRAMTest::test_cfg_reg();
   bit [7:0] recv[] = {0}, addr;
   $display("%t === [test cfg reg] ===", $time);
 
-  this.psram_cfg_wr(8'h0, 8'b00_0_010_10);
-  this.psram_cfg_rd(8'h0, recv);
-  $display("addr: %d data: %d", 8'h0, recv[0]);
-
-  // for (int i = 0; i < 9; i++) begin
-  //   if (i == 5 || i == 6 || i == 7) continue;
-  //   this.psram_cfg_rd(i, recv);
-  //   $display("addr: %d data: %d", i, recv[0]);
-  // end
+  for (int i = 0; i < 9; i++) begin
+    if (i == 5 || i == 6 || i == 7) continue;
+    this.psram_cfg_rd(i, recv);
+    $display("addr: %d data: %b", i, recv[0]);
+  end
 endtask
 
 task automatic PSRAMTest::test_bus_wr_rd();

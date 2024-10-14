@@ -90,7 +90,7 @@ module psram_core (
   assign psram_sck_o         = s_ce_fsm_low_bound && s_ce_fsm_high_bound ? s_psram_clk : '0;
   // delay one cycle of ce
   assign psram_ce_o          = s_fsm_state_q == `PSRAM_FSM_IDLE || s_fsm_state_q == `PSRAM_FSM_RECY;
-  assign psram_io_en_o       = ~(s_fsm_state_q == `PSRAM_FSM_RDATA);  // NOTE: refer to the TRM P16
+  assign psram_io_en_o       = {8{~(s_fsm_state_q == `PSRAM_FSM_RDATA)}};
   assign psram_io_out_o      = s_wr_shift_data;
   assign psram_dqs_en_o      = s_fsm_state_q == `PSRAM_FSM_WDATA;
   assign psram_dqs_out_o     = s_fsm_state_q == `PSRAM_FSM_WDATA ? s_wr_shift_mask : '0;
