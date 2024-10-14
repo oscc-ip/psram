@@ -139,15 +139,17 @@ module psram_core (
       .DIV_VALUE_WIDTH (8),
       .DONE_DELAY_WIDTH(3)
   ) u_clk_int_div_simple (
-      .clk_i      (clk_i),
-      .rst_n_i    (rst_n_i),
-      .div_i      (s_div_val),
-      .div_valid_i(~(cfg_en_i && ~psram_ce_o)),
-      .div_ready_o(),
-      .div_done_o (),
-      .clk_cnt_o  (s_clk_cnt),
-      .clk_trg_o  (),
-      .clk_o      (s_psram_clk)
+      .clk_i        (clk_i),
+      .rst_n_i      (rst_n_i),
+      .div_i        (s_div_val),
+      .div_valid_i  (~(cfg_en_i && ~psram_ce_o)),
+      .clk_init_i   ('0),
+      .div_ready_o  (),
+      .div_done_o   (),
+      .clk_cnt_o    (s_clk_cnt),
+      .clk_fir_trg_o(),
+      .clk_sec_trg_o(),
+      .clk_o        (s_psram_clk)
   );
 
   // 1. delay some cycles to meet tCSP at negedge of ce
