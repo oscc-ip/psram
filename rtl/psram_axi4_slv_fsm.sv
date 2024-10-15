@@ -22,6 +22,7 @@
 
 `include "setting.sv"
 `include "register.sv"
+`include "edge_det.sv"
 `include "axi4_define.sv"
 `include "axi4_addr_gen.sv"
 
@@ -122,6 +123,7 @@ module psram_axi4_slv_fsm #(
   logic [USR_ADDR_WIDTH-`AXI4_DATA_BLOG-1:0] s_usr_addr_d, s_usr_addr_q;
   logic [`AXI4_WSTRB_WIDTH-1:0] s_usr_bm_d, s_usr_bm_q;
   logic [`AXI4_DATA_WIDTH-1:0] s_usr_wr_dat_d, s_usr_wr_dat_q;
+  logic s_xfer_start_flag, s_xfer_start_trg;
 
   // reg
   assign usr_addr_o      = s_usr_addr_q;
@@ -147,7 +149,7 @@ module psram_axi4_slv_fsm #(
     s_usr_bm_d       = s_usr_bm_q;
     s_usr_wr_dat_d   = s_usr_wr_dat_q;
     // port
-    usr_xfer_start_o = '0;
+    // usr_xfer_start_o = '0;
     usr_wen_o        = '0;
     usr_wlen_o       = '0;
     // const
@@ -178,24 +180,21 @@ module psram_axi4_slv_fsm #(
           s_usr_addr_d = awaddr[USR_ADDR_WIDTH-1:`AXI4_DATA_BLOG];
 
           if (wvalid) begin
-            usr_wlen_o       = awlen;
-            usr_wen_o        = 1'b1;
-            usr_xfer_start_o = ~wlast;
-            s_usr_bm_d       = wstrb;
-            s_usr_wr_dat_d   = wdata;
+            usr_wlen_o     = awlen;
+            usr_wen_o      = 1'b1;
+            s_usr_bm_d     = wstrb;
+            s_usr_wr_dat_d = wdata;
           end
-
           if (wvalid && wready) begin
-            s_state_d = (wlast) ? SEND_B : WRITE;
+            s_state_d = wlast ? SEND_B : WRITE;
           end else s_state_d = WRITE;
         end
       end
 
       READ: begin
         if (rready) begin
-          rid              = s_axi_req_q.id;
-          rlast            = s_trans_cnt_q == s_axi_req_q.len + 1;
-          usr_xfer_start_o = ~rlast;
+          rid   = s_axi_req_q.id;
+          rlast = s_trans_cnt_q == s_axi_req_q.len + 1;
 
           if (rvalid) begin
             s_axi_req_d.addr = s_xfer_nxt_addr;
@@ -211,11 +210,10 @@ module psram_axi4_slv_fsm #(
 
       WRITE: begin
         if (wvalid) begin
-          usr_wlen_o       = s_axi_req_q.len;
-          usr_wen_o        = 1'b1;
-          usr_xfer_start_o = ~wlast;
-          s_usr_bm_d       = wstrb;
-          s_usr_wr_dat_d   = wdata;
+          usr_wlen_o     = s_axi_req_q.len;
+          usr_wen_o      = 1'b1;
+          s_usr_bm_d     = wstrb;
+          s_usr_wr_dat_d = wdata;
 
           if (wready) begin
             s_axi_req_d.addr = s_xfer_nxt_addr;
@@ -272,4 +270,21 @@ module psram_axi4_slv_fsm #(
       s_usr_wr_dat_d,
       s_usr_wr_dat_q
   );
+
+
+  // delay one cycle
+  assign s_xfer_start_flag = (s_state_q == IDLE && awvalid && wvalid) ||
+                             (s_state_q == WRITE && wvalid) || (s_state_q == READ && rready);
+  edge_det_re #(
+      .STAGE     (1),
+      .DATA_WIDTH(1)
+  ) u_usr_xfer_start_edge_det_re (
+      .clk_i  (aclk),
+      .rst_n_i(aresetn),
+      .dat_i  (s_xfer_start_flag),
+      .re_o   (s_xfer_start_trg)
+  );
+
+  assign usr_xfer_start_o = s_xfer_start_trg || (s_state_q == WRITE && wvalid && ~wlast) ||
+                            (s_state_q == READ && rready && ~rlast);
 endmodule

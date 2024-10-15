@@ -93,7 +93,7 @@ module psram_core (
   assign psram_io_en_o       = {8{~(s_fsm_state_q == `PSRAM_FSM_RDATA)}};
   assign psram_io_out_o      = s_wr_shift_data;
   assign psram_dqs_en_o      = s_fsm_state_q == `PSRAM_FSM_WDATA;
-  assign psram_dqs_out_o     = s_fsm_state_q == `PSRAM_FSM_WDATA ? s_wr_shift_mask : '0;
+  assign psram_dqs_out_o     = s_fsm_state_q == `PSRAM_FSM_WDATA ? ~s_wr_shift_mask : '0;
   // trg mode
 
   assign s_sdr_fe_trg        = s_clk_cnt == s_div_val;
@@ -198,7 +198,7 @@ module psram_core (
       `PSRAM_FSM_LATN: begin
         if (s_fsm_cnt_q == '0 && s_sdr_low_trg) begin
           s_fsm_state_d = xfer_rdwr_i ? `PSRAM_FSM_RDATA : `PSRAM_FSM_WDATA;
-          s_fsm_cnt_d   = cfg_cflg_i ? 8'd1 : 8'd7;
+          s_fsm_cnt_d   = cfg_cflg_i ? 8'd1 : (xfer_rdwr_i ? 8'd8 : 8'd7);
         end else begin
           if (s_sdr_fe_trg) s_fsm_cnt_d = s_fsm_cnt_q - 1'b1;
         end
@@ -216,7 +216,7 @@ module psram_core (
           s_fsm_state_d = `PSRAM_FSM_TCHD;
           s_fsm_cnt_d   = {6'd0, cfg_tchd_i};
         end else begin
-          if (s_dqs_re_trg || s_dqs_fe_trg) s_fsm_cnt_d = s_fsm_cnt_q - 1'b1;
+          if (s_dqs_re_trg || s_dqs_fe_trg) s_fsm_cnt_d = s_fsm_cnt_q - 1'b1;  // TODO:
         end
       end
       `PSRAM_FSM_TCHD: begin
@@ -280,7 +280,7 @@ module psram_core (
   // when in INST, ADDR or xDATA phase, ddr mode
   // otherwise in sdr mode
   always_comb begin
-    if (s_fsm_state_q == `PSRAM_FSM_ADDR || s_fsm_state_q == `PSRAM_FSM_WDATA || s_fsm_state_q == `PSRAM_FSM_RDATA) begin
+    if (s_fsm_state_q == `PSRAM_FSM_ADDR || s_fsm_state_q == `PSRAM_FSM_WDATA) begin
       s_clk_trg = s_ddr_trg;
     end else begin
       s_clk_trg = s_sdr_fe_trg;

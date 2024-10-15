@@ -263,14 +263,15 @@ module axi4_psram #(
   );
 
   always_comb begin
+    s_xfer_valid_d = s_xfer_valid_q;
     if (~psram.psram_ce_o) begin
       s_xfer_valid_d = 1'b0;
     end else if (s_bit_cflg) begin
       if (s_apb4_wr_hdshk && s_apb4_addr == `PSRAM_DATA) s_xfer_valid_d = '1;
       else if (s_xfer_rd_valid_trg) s_xfer_valid_d = '1;
       else s_xfer_valid_d = '0;
-    end else begin
-      s_xfer_valid_d = s_bus_xfer_start;
+    end else if (s_bus_xfer_start) begin
+      s_xfer_valid_d = 1'b1;
     end
   end
   dffr #(1) u_xfer_valid_dffr (

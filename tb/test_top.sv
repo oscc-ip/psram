@@ -43,7 +43,7 @@ program automatic test_top (
     psram_hdl.psram_global_reset();
     // make sure 'psram_init_device' is done
     psram_hdl.test_cfg_reg();
-    // psram_hdl.test_bus_wr_rd();
+    psram_hdl.test_bus_wr_rd();
     Helper::end_banner();
     #20000 $finish;
   end
