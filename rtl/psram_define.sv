@@ -13,40 +13,40 @@
 
 /* register mapping
  * PSRAM_CTRL:
- * BITS:   | 31:16 | 15:14 | 13:12 | 11:4 | 3:2  | 1    | 0  |
- * FIELDS: | RES   | TCHD  | TCSP  | RECY | PSCR | CFLG | EN |
- * PERMS:  | NONE  | RW    | RW    | RW   | RW   | RW   | RW |
- * -----------------------------------------------------------
+ * BITS:   | 31:18 | 17:16 | 15:14 | 13:12 | 11:4 | 3:2  | 1    | 0  |
+ * FIELDS: | RES   | DQSPN | TCHD  | TCSP  | RECY | PSCR | CFLG | EN |
+ * PERMS:  | NONE  | RW    | RW    | RW    | RW   | RW   | RW   | RW |
+ * -------------------------------------------------------------------
  * PSRAM_CMD(wr when in config mode):
  * BITS:   | 31:16 | 15:8 | 7:0  |
  * FIELDS: | RES   | RCMD | WCMD |
  * PERMS:  | NONE  | RW   | RW   |
- * -----------------------------------------------------------
+ * -------------------------------------------------------------------
  * PSRAM_CCMD(wr when in config mode):
  * BITS:   | 31:8 | 7:0  |
  * FIELDS: | RES  | CCMD |
  * PERMS:  | NONE | RW   |
- * -----------------------------------------------------------
+ * -------------------------------------------------------------------
  * PSRAM_WAIT(wr when in config mode):
  * BITS:   | 31:16 | 15:8 | 7:0 |
  * FIELDS: | RES   | RLC  | WLC |
  * PERMS:  | NONE  | RW   | RW  |
- * -----------------------------------------------------------
+ * -------------------------------------------------------------------
  * PSRAM_ADDR(wr when in config mode):
  * BITS:   | 31:0 |
  * FIELDS: | ADDR |
  * PERMS:  | RW   |
- * -----------------------------------------------------------
+ * -------------------------------------------------------------------
  * PSRAM_DATA(wr when in config mode):
  * BITS:   | 31:8 | 7:0  |
  * FIELDS: | RES  | DATA |
  * PERMS:  | NONE | RW   |
- * -----------------------------------------------------
+ * -------------------------------------------------------------------
  * PSRAM_STAT:
  * BITS:   | 31:3 | 2    | 1:0 |
  * FIELDS: | RES  | DONE | CRM |
  * PERMS:  | NONE | RO   | RO  |
- * -----------------------------------------------------
+ * -------------------------------------------------------------------
 */
 
 // OPI linear Burst:
@@ -72,7 +72,7 @@
 `define PSRAM_STAT_ADDR {26'b0, `PSRAM_STAT, 2'b00}
 
 
-`define PSRAM_CTRL_WIDTH 16
+`define PSRAM_CTRL_WIDTH 18
 `define PSRAM_CMD_WIDTH  16
 `define PSRAM_CCMD_WIDTH 8
 `define PSRAM_WAIT_WIDTH 16

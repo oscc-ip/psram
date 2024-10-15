@@ -41,6 +41,7 @@ module psram_core (
     input  logic [ 7:0] cfg_recy_i,
     input  logic [ 1:0] cfg_tcsp_i,
     input  logic [ 1:0] cfg_tchd_i,
+    input  logic [ 1:0] cfg_dqspn_i,
     input  logic [ 7:0] cfg_wcmd_i,
     input  logic [ 7:0] cfg_rcmd_i,
     input  logic [ 7:0] cfg_ccmd_i,
@@ -331,8 +332,23 @@ module psram_core (
 
 
   // capture dqs with mid pos according to divX value
+  // tQQSCK: [2, 6.5]ns
+  //          _   _   _   _   _   _   _   _   _   _
+  // 800M    | |_| |_| |_| |_| |_| |_| |_| |_| |_| |_
+  //          _______________
+  // 100M:   |               |_______________|
+  //         0     2.5ns     5ns    7.5ns    10ns
+  //                _______________
+  // DQSmin:       |               |_______________|
+  //         <===> 2ns
+  //                               _______________
+  // DQSmax:                      |               |_______________|
+  //         <==================> 6.5ns
+  //
+  // 50M: 20ns
+  // 25M: 40ns
   always_comb begin
-    unique case (cfg_pscr_i)
+    unique case (cfg_dqspn_i)
       `PSRAM_PSCR_DIV4: begin
         s_dqs_re_trg = s_dqs_div4_re_trg;
         s_dqs_fe_trg = s_dqs_div4_fe_trg;
