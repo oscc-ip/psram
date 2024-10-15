@@ -68,10 +68,11 @@ task automatic PSRAMTest::init_common_cfg(bit cfg_mode, bit cfg_wr, bit global_r
   // wr cmd
   this.apb4_write(`PSRAM_CTRL_ADDR, ctrl_val);
   ctrl_val[1]     = cfg_mode;
-  ctrl_val[3:2]   = 2'b01;  // div8
+  ctrl_val[3:2]   = 2'd1;  // div8
   ctrl_val[11:4]  = 8'd13;  // delay 3 cycle
   ctrl_val[13:12] = 2'd1;  // tcsp
   ctrl_val[15:14] = 2'd1;  // tchd
+  ctrl_val[17:16] = 2'd1;  // div8
   this.apb4_write(`PSRAM_CTRL_ADDR, ctrl_val);
   cmd_val[7:0]  = 8'hA0;  // wcmd 8'hA0
   cmd_val[15:8] = 8'h20;  // rcmd 8'h20
@@ -188,24 +189,29 @@ task automatic PSRAMTest::test_bus_wr_rd();
   // trans_addr  = trans_baddr + 32'h0001_0310;
   trans_size  = 3'd3;
   trans_type  = `AXI4_BURST_TYPE_INCR;
-  trans_len   = 8'd1;
+  trans_len   = 8'd255;
   trans_id    = '1;
   for (int i = 0; i < trans_len; i++) begin
     trans_val = {$random, $random};
-    $display("%d: wr_val: %0h", i + 1, trans_val);
+    // $display("%d: wr_val: %0h", i + 1, trans_val);
     trans_wdata.push_back(trans_val);
   end
 
   this.axi4_write(.id(trans_id), .addr(trans_addr), .len(trans_len), .size(trans_size),
                   .burst(trans_type), .data(trans_wdata));
-
   repeat (400) @(posedge this.apb4_mstr.apb4.pclk);
+  $display("write data done");
+  this.wait_xfer_done();
+  $display("start read data");
   this.axi4_read(.id(trans_id), .addr(trans_addr), .len(trans_len), .size(trans_size),
                  .burst(trans_type));
 
-  for (int i = 0; i < trans_len; i++) begin
-    $display("rd_data: %h", this.axi4_mstr.rd_data[i]);
+  for (int i = 0; i < trans_len + 1; i++) begin
+    if (trans_wdata[i] != this.axi4_mstr.rd_data[i]) begin
+      $display("i: %d wr_data: %h rd_data: %h", i, trans_wdata[i], this.axi4_mstr.rd_data[i]);
+    end
   end
+  $display("trans_len: %d simple smoke test done", trans_len);
 endtask
 
 `endif
