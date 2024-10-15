@@ -30,6 +30,7 @@ class PSRAMTest extends APB4AXI4Master;
   extern task automatic psram_cfg_rd(input bit [7:0] addr, ref bit [7:0] data[]);
   extern task automatic test_cfg_reg();
   extern task automatic test_bus_wr_rd();
+  extern task automatic test_bus_random_wr_rd();
 endclass
 
 function PSRAMTest::new(string name, virtual apb4_if.master apb4, virtual axi4_if.master axi4,
@@ -212,6 +213,51 @@ task automatic PSRAMTest::test_bus_wr_rd();
     end
   end
   $display("trans_len: %d simple smoke test done", trans_len);
+endtask
+
+
+task automatic PSRAMTest::test_bus_random_wr_rd();
+
+  bit [`AXI4_DATA_WIDTH-1:0] trans_wdata [$];
+  bit [`AXI4_ADDR_WIDTH-1:0] trans_addr;
+  bit [`AXI4_ADDR_WIDTH-1:0] trans_baddr;
+  bit [                 2:0] trans_size;
+  bit [                 1:0] trans_type;
+  int                        trans_len;
+  int                        trans_id;
+
+  $display("%t random burst wr/rd test", $time);
+  for (int i = 0; i < 10000; i++) begin
+    trans_len   = {$random} % 256;
+    trans_id    = {$random} % 16;
+    trans_size  = {$random} % 4;
+    // trans_type  = {$random} % 2;
+    trans_type  = `AXI4_BURST_TYPE_INCR;
+    // 32'hE000_0000 - 32'hE400_0000(range: 64MB)
+    trans_baddr = 32'hE000_0000;
+    // generate aligned addr
+    trans_addr  = trans_baddr + ((({$random} % 32'h03FF_FFF8) >> trans_size) << trans_size);
+    $display("i: %d id: %d addr: %h len: %d size: %h burst: %d", i, trans_id, trans_addr,
+             trans_len, trans_size, trans_type);
+    trans_wdata = {};
+    for (int j = 0; j < trans_len; j++) begin
+      trans_wdata.push_back({$random, $random});
+    end
+
+    if (trans_type == `AXI4_BURST_TYPE_FIXED) begin
+      trans_len = 1;
+    end
+    this.axi4_write(.id(trans_id), .addr(trans_addr), .len(trans_len), .size(trans_size),
+                    .burst(trans_type), .data(trans_wdata));
+
+    repeat (400) @(posedge this.apb4_mstr.apb4.pclk);
+    // $display("write data done");
+    this.wait_xfer_done();
+
+    this.axi4_rd_check(.id(trans_id), .addr(trans_addr), .len(trans_len), .size(trans_size),
+                       .burst(trans_type), .ref_data(trans_wdata), .cmp_type(Helper::EQUL));
+  end
+
 endtask
 
 `endif
