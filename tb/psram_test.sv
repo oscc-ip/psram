@@ -68,7 +68,7 @@ task automatic PSRAMTest::init_common_cfg(bit cfg_mode, bit cfg_wr, bit global_r
   // wr cmd
   this.apb4_write(`PSRAM_CTRL_ADDR, ctrl_val);
   ctrl_val[1]     = cfg_mode;
-  ctrl_val[3:2]   = 2'b11;  // div32
+  ctrl_val[3:2]   = 2'b01;  // div8
   ctrl_val[11:4]  = 8'd13;  // delay 3 cycle
   ctrl_val[13:12] = 2'd1;  // tcsp
   ctrl_val[15:14] = 2'd1;  // tchd

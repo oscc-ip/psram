@@ -80,6 +80,10 @@ module psram_core (
   logic s_sdr_low_trg, s_sdr_mid_low_trg, s_sdr_mid_high_trg, s_sdr_fe_trg, s_ddr_trg;
   // dqs capture
   logic s_dqs_re_trg, s_dqs_fe_trg;
+  logic s_dqs_div4_re_trg, s_dqs_div4_fe_trg;
+  logic s_dqs_div8_re_trg, s_dqs_div8_fe_trg;
+  logic s_dqs_div16_re_trg, s_dqs_div16_fe_trg;
+  logic s_dqs_div32_re_trg, s_dqs_div32_fe_trg;
 
   // utils
   assign cfg_data_o          = s_rd_data_q[7:0];
@@ -326,15 +330,72 @@ module psram_core (
   );
 
 
-  // capture dqs
+  // capture dqs with mid pos according to divX value
+  always_comb begin
+    unique case (cfg_pscr_i)
+      `PSRAM_PSCR_DIV4: begin
+        s_dqs_re_trg = s_dqs_div4_re_trg;
+        s_dqs_fe_trg = s_dqs_div4_fe_trg;
+      end
+      `PSRAM_PSCR_DIV8: begin
+        s_dqs_re_trg = s_dqs_div8_re_trg;
+        s_dqs_fe_trg = s_dqs_div8_fe_trg;
+      end
+      `PSRAM_PSCR_DIV16: begin
+        s_dqs_re_trg = s_dqs_div16_re_trg;
+        s_dqs_fe_trg = s_dqs_div16_fe_trg;
+      end
+      `PSRAM_PSCR_DIV32: begin
+        s_dqs_re_trg = s_dqs_div32_re_trg;
+        s_dqs_fe_trg = s_dqs_div32_fe_trg;
+      end
+    endcase
+  end
+
   edge_det_sync #(
       .DATA_WIDTH(1)
-  ) u_dqs_edge_det_sync (
+  ) u_dqs_div4_edge_det_sync (
       .clk_i  (clk_i),
       .rst_n_i(rst_n_i),
       .dat_i  (psram_dqs_in_i),
-      .re_o   (s_dqs_re_trg),
-      .fe_o   (s_dqs_fe_trg)
+      .re_o   (s_dqs_div4_re_trg),
+      .fe_o   (s_dqs_div4_fe_trg)
+  );
+
+  edge_det #(
+      .STAGE     (1),
+      .DATA_WIDTH(1)
+  ) u_dqs_div8_edge_det (
+      .clk_i  (clk_i),
+      .rst_n_i(rst_n_i),
+      .dat_i  (psram_dqs_in_i),
+      .dat_o  (),
+      .re_o   (s_dqs_div8_re_trg),
+      .fe_o   (s_dqs_div8_fe_trg)
+  );
+
+  edge_det #(
+      .STAGE     (3),
+      .DATA_WIDTH(1)
+  ) u_dqs_div16_edge_det (
+      .clk_i  (clk_i),
+      .rst_n_i(rst_n_i),
+      .dat_i  (psram_dqs_in_i),
+      .dat_o  (),
+      .re_o   (s_dqs_div16_re_trg),
+      .fe_o   (s_dqs_div16_fe_trg)
+  );
+
+  edge_det #(
+      .STAGE     (7),
+      .DATA_WIDTH(1)
+  ) u_dqs_div32_edge_det (
+      .clk_i  (clk_i),
+      .rst_n_i(rst_n_i),
+      .dat_i  (psram_dqs_in_i),
+      .dat_o  (),
+      .re_o   (s_dqs_div32_re_trg),
+      .fe_o   (s_dqs_div32_fe_trg)
   );
 
 
