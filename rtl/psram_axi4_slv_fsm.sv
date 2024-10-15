@@ -117,7 +117,7 @@ module psram_axi4_slv_fsm #(
 
   axi4_req_t s_axi_req_d, s_axi_req_q;
   axi4_fsm_t s_state_d, s_state_q;
-  logic [7:0] s_trans_cnt_d, s_trans_cnt_q;
+  logic [8:0] s_trans_cnt_d, s_trans_cnt_q;
   logic [    `AXI4_ADDR_WIDTH-1:0] s_xfer_nxt_addr;
   logic [`AXI4_ADDR_OFT_WIDTH-1:0] s_oft_addr;
   logic [USR_ADDR_WIDTH-`AXI4_DATA_BLOG-1:0] s_usr_addr_d, s_usr_addr_q;
@@ -233,7 +233,7 @@ module psram_axi4_slv_fsm #(
     endcase
   end
 
-  dffr #(8) u_cnt_dffr (
+  dffr #(9) u_cnt_dffr (
       aclk,
       aresetn,
       s_trans_cnt_d,
