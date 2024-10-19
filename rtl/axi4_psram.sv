@@ -71,7 +71,7 @@ module axi4_psram #(
   assign s_apb4_addr     = apb4.paddr[5:2];
   assign s_apb4_wr_hdshk = apb4.psel && apb4.penable && apb4.pwrite;
   assign s_apb4_rd_hdshk = apb4.psel && apb4.penable && (~apb4.pwrite);
-  assign apb4.pready     = s_apb4_rd_hdshk && s_apb4_addr == `PSRAM_DATA ? s_cfg_rd_ready_q : 1'b1;
+  assign apb4.pready     = ~apb4.pwrite && s_apb4_addr == `PSRAM_DATA ? s_cfg_rd_ready_q : 1'b1;
   assign apb4.pslverr    = 1'b0;
 
   // irq
