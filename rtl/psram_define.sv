@@ -42,6 +42,11 @@
  * FIELDS: | RES  | DATA |
  * PERMS:  | NONE | RW   |
  * -------------------------------------------------------------------
+ * PSRAM_RDAT
+ * BITS:   | 31:8 | 7:0  |
+ * FIELDS: | RES  | RDAT |
+ * PERMS:  | NONE | RW   |
+ * -------------------------------------------------------------------
  * PSRAM_STAT:
  * BITS:   | 31:3 | 2    | 1:0 |
  * FIELDS: | RES  | DONE | CRM |
@@ -60,7 +65,8 @@
 `define PSRAM_WAIT 4'b0011 // BASEADDR + 0x0C
 `define PSRAM_ADDR 4'b0100 // BASEADDR + 0x10
 `define PSRAM_DATA 4'b0101 // BASEADDR + 0x14
-`define PSRAM_STAT 4'b0110 // BASEADDR + 0x18
+`define PSRAM_RDAT 4'b0110 // BASEADDR + 0x18
+`define PSRAM_STAT 4'b0111 // BASEADDR + 0x1C
 
 
 `define PSRAM_CTRL_ADDR {26'b0, `PSRAM_CTRL, 2'b00}
@@ -69,6 +75,7 @@
 `define PSRAM_WAIT_ADDR {26'b0, `PSRAM_WAIT, 2'b00}
 `define PSRAM_ADDR_ADDR {26'b0, `PSRAM_ADDR, 2'b00}
 `define PSRAM_DATA_ADDR {26'b0, `PSRAM_DATA, 2'b00}
+`define PSRAM_RDAT_ADDR {26'b0, `PSRAM_RDAT, 2'b00}
 `define PSRAM_STAT_ADDR {26'b0, `PSRAM_STAT, 2'b00}
 
 
@@ -78,6 +85,7 @@
 `define PSRAM_WAIT_WIDTH 16
 `define PSRAM_ADDR_WIDTH 32
 `define PSRAM_DATA_WIDTH 8
+`define PSRAM_RDAT_WIDTH 8
 `define PSRAM_STAT_WIDTH 3
 // verilog_format: on
 

@@ -34,6 +34,8 @@ module axi4_psram #(
   logic s_psram_addr_en;
   logic [`PSRAM_DATA_WIDTH-1:0] s_psram_data_d, s_psram_data_q;
   logic s_psram_data_en;
+  logic [`PSRAM_RDAT_WIDTH-1:0] s_psram_rdat_d, s_psram_rdat_q;
+  logic s_psram_rdat_en;
   logic [`PSRAM_STAT_WIDTH-1:0] s_psram_stat_d, s_psram_stat_q;
   // bitfield
   logic s_bit_en, s_bit_cflg, s_bit_done;
@@ -42,7 +44,7 @@ module axi4_psram #(
   logic [7:0] s_bit_wlc, s_bit_rlc;
   // other
   logic s_xfer_valid_d, s_xfer_valid_q;
-  logic s_xfer_rdwr_d, s_xfer_rdwr_q, s_xfer_ready, s_xfer_ready_re_trg;
+  logic s_xfer_rdwr_d, s_xfer_rdwr_q, s_xfer_ready, s_xfer_rd_valid_trg;
   // utils
   logic s_bus_xfer_start, s_bus_wen;
   logic s_xfer_done;
@@ -50,8 +52,6 @@ module axi4_psram #(
   logic [22:0] s_axi_bus_addr;
   logic [31:0] s_bus_addr;
   logic [63:0] s_bus_wr_data, s_bus_rd_data;
-  // rd oper
-  logic s_cfg_rd_ready_d, s_cfg_rd_ready_q, s_xfer_rd_valid_trg;
 
   assign s_bit_en        = s_psram_ctrl_q[0];
   assign s_bit_cflg      = s_psram_ctrl_q[1];
@@ -71,7 +71,7 @@ module axi4_psram #(
   assign s_apb4_addr     = apb4.paddr[5:2];
   assign s_apb4_wr_hdshk = apb4.psel && apb4.penable && apb4.pwrite;
   assign s_apb4_rd_hdshk = apb4.psel && apb4.penable && (~apb4.pwrite);
-  assign apb4.pready     = ~apb4.pwrite && s_apb4_addr == `PSRAM_DATA ? s_cfg_rd_ready_q : 1'b1;
+  assign apb4.pready     = 1'b1;
   assign apb4.pslverr    = 1'b0;
 
   // irq
@@ -148,6 +148,15 @@ module axi4_psram #(
       s_psram_data_q
   );
 
+  assign s_psram_rdat_en = s_xfer_done;
+  assign s_psram_rdat_d  = s_cfg_rd_data;
+  dffer #(`PSRAM_RDAT_WIDTH) u_psram_rdat_dffer (
+      apb4.pclk,
+      apb4.presetn,
+      s_psram_rdat_en,
+      s_psram_rdat_d,
+      s_psram_rdat_q
+  );
 
   assign s_psram_stat_d[2]   = s_xfer_ready;
   assign s_psram_stat_d[1:0] = `PSRAM_MODE_OPI;
@@ -157,25 +166,6 @@ module axi4_psram #(
       s_psram_stat_d,
       s_psram_stat_q
   );
-
-
-  edge_det_sync_re #(
-      .DATA_WIDTH(1)
-  ) u_xfer_ready_edge_det_sync_re (
-      .clk_i  (apb4.pclk),
-      .rst_n_i(apb4.presetn),
-      .dat_i  (s_xfer_ready),
-      .re_o   (s_xfer_ready_re_trg)
-  );
-
-  assign s_cfg_rd_ready_d = s_xfer_ready_re_trg;
-  dffr #(1) u_cfg_rd_ready_dffr (
-      apb4.pclk,
-      apb4.presetn,
-      s_cfg_rd_ready_d,
-      s_cfg_rd_ready_q
-  );
-
 
   always_comb begin
     apb4.prdata = '0;
@@ -187,6 +177,7 @@ module axi4_psram #(
         `PSRAM_WAIT: apb4.prdata[`PSRAM_WAIT_WIDTH-1:0] = s_psram_wait_q;
         `PSRAM_ADDR: apb4.prdata[`PSRAM_ADDR_WIDTH-1:0] = s_psram_addr_q;
         `PSRAM_DATA: apb4.prdata[`PSRAM_DATA_WIDTH-1:0] = s_psram_data_q;
+        `PSRAM_RDAT: apb4.prdata[`PSRAM_RDAT_WIDTH-1:0] = s_psram_rdat_q;
         `PSRAM_STAT: apb4.prdata[`PSRAM_STAT_WIDTH-1:0] = s_psram_stat_q;
         default:     apb4.prdata = '0;
       endcase
