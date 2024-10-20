@@ -89,8 +89,6 @@ module psram_axi4_slv_fsm #(
     input  logic                                      usr_rvalid_i
 );
 
-  assign wready = usr_wready_i;
-  assign rvalid = usr_rvalid_i;
   // AXI has the following rules governing the use of bursts:
   // - a burst must not cross a 4KB address boundary
   typedef enum logic [1:0] {
@@ -124,7 +122,10 @@ module psram_axi4_slv_fsm #(
   logic [`AXI4_WSTRB_WIDTH-1:0] s_usr_bm_d, s_usr_bm_q;
   logic [`AXI4_DATA_WIDTH-1:0] s_usr_wr_dat_d, s_usr_wr_dat_q;
   logic s_xfer_start_flag, s_xfer_start_trg;
+  logic s_rvalid_d, s_rvalid_q;
 
+  assign wready          = usr_wready_i;
+  assign rvalid          = s_rvalid_q;
   // reg
   assign usr_addr_o      = s_usr_addr_q;
   assign usr_bm_o        = s_usr_bm_q;
@@ -194,16 +195,14 @@ module psram_axi4_slv_fsm #(
       READ: begin
         rid   = s_axi_req_q.id;
         rlast = s_trans_cnt_q == s_axi_req_q.len + 1;
-        if (rvalid) begin
-          if (rready) begin
-            s_axi_req_d.addr = s_xfer_nxt_addr;
-            case (s_axi_req_q.burst)
-              FIXED, INCR: s_usr_addr_d = s_xfer_nxt_addr[USR_ADDR_WIDTH-1:`AXI4_DATA_BLOG];
-              default:     s_usr_addr_d = '0;
-            endcase
-            if (rlast) s_state_d = IDLE;
-            s_trans_cnt_d = s_trans_cnt_q + 1;
-          end
+        if (rvalid && rready) begin
+          s_axi_req_d.addr = s_xfer_nxt_addr;
+          case (s_axi_req_q.burst)
+            FIXED, INCR: s_usr_addr_d = s_xfer_nxt_addr[USR_ADDR_WIDTH-1:`AXI4_DATA_BLOG];
+            default:     s_usr_addr_d = '0;
+          endcase
+          if (rlast) s_state_d = IDLE;
+          s_trans_cnt_d = s_trans_cnt_q + 1;
         end
       end
 
@@ -270,6 +269,20 @@ module psram_axi4_slv_fsm #(
       s_usr_wr_dat_q
   );
 
+
+  always_comb begin
+    if (s_state_q == READ) begin
+      s_rvalid_d = s_rvalid_q;
+      if (~s_rvalid_q && usr_rvalid_i) s_rvalid_d = 1'b1;
+      else if (s_rvalid_q && rready) s_rvalid_d = 1'b0;
+    end else s_rvalid_d = 1'b0;
+  end
+  dffr #(1) u_rvalid_dffr (
+      aclk,
+      aresetn,
+      s_rvalid_d,
+      s_rvalid_q
+  );
 
   // delay one cycle
   assign s_xfer_start_flag = (s_state_q == IDLE && awvalid && wvalid) ||

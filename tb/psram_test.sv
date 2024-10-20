@@ -190,9 +190,9 @@ task automatic PSRAMTest::test_bus_wr_rd();
   trans_type  = `AXI4_BURST_TYPE_INCR;
   trans_len   = 8'd2;
   trans_id    = '1;
-  for (int i = 0; i < trans_len; i++) begin
+  for (int i = 0; i < trans_len + 1; i++) begin
     trans_val = {$random, $random};
-    // $display("%d: wr_val: %0h", i + 1, trans_val);
+    $display("%d: wr_val: %0h", i, trans_val);
     trans_wdata.push_back(trans_val);
   end
 
