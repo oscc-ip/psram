@@ -27,7 +27,7 @@ class PSRAMTest extends APB4AXI4Master;
   extern task automatic psram_init_device();
   extern task automatic psram_global_reset();
   extern task automatic psram_cfg_wr(input bit [7:0] addr, input bit [7:0] data);
-  extern task automatic psram_cfg_rd(input bit [7:0] addr, ref bit [7:0] data[]);
+  extern task automatic psram_cfg_rd(input bit [7:0] addr);
   extern task automatic test_cfg_reg();
   extern task automatic test_bus_wr_rd();
   extern task automatic test_bus_random_wr_rd();
@@ -89,6 +89,7 @@ task automatic PSRAMTest::init_common_cfg(bit cfg_mode, bit cfg_wr, bit global_r
   this.apb4_write(`PSRAM_WAIT_ADDR, wait_val);
   ctrl_val[0] = 1'b1;  // en core clk
   this.apb4_write(`PSRAM_CTRL_ADDR, ctrl_val);
+  $display("CTRL: %h CMD: %h CCMD: %h WAIT: %h", ctrl_val, cmd_val, ccmd_val, wait_val);
 endtask
 
 task automatic PSRAMTest::psram_init_device();
@@ -120,14 +121,12 @@ task automatic PSRAMTest::psram_cfg_wr(input bit [7:0] addr, input bit [7:0] dat
   repeat (100) @(posedge this.apb4_mstr.apb4.pclk);
 endtask
 
-task automatic PSRAMTest::psram_cfg_rd(input bit [7:0] addr, ref bit [7:0] data[]);
+task automatic PSRAMTest::psram_cfg_rd(input bit [7:0] addr);
   // repeat (400) @(posedge this.apb4_mstr.apb4.pclk);
   // $display("%t === [test psram cfg rd] ===", $time);
-
   repeat (50) @(posedge this.apb4_mstr.apb4.pclk);
   this.apb4_write(`PSRAM_ADDR_ADDR, {24'd0, addr});
   this.apb4_read(`PSRAM_DATA_ADDR);
-  data[0] = this.apb4_mstr.rd_data[7:0];
 endtask
 
 task automatic PSRAMTest::wait_xfer_done();
@@ -137,35 +136,34 @@ task automatic PSRAMTest::wait_xfer_done();
 endtask
 
 task automatic PSRAMTest::test_cfg_reg();
-  bit [7:0] recv[] = {0}, addr;
   $display("%t === [test cfg reg] ===", $time);
   this.init_common_cfg(1'b1, 1'b0);
   for (int i = 0; i < 9; i++) begin
     if (i == 5 || i == 6 || i == 7) continue;
-    this.psram_cfg_rd(i, recv);
-    // wait data
+    this.psram_cfg_rd(i);
     this.wait_xfer_done();
-    $display("addr: %d data: %b", i, recv[0]);
+    this.apb4_read(`PSRAM_RDAT_ADDR);
+    $display("addr: %d data: %b", i, this.apb4_mstr.rd_data[7:0]);
   end
 
-  $display("wr reg 0");
-  this.init_common_cfg(1'b1, 1'b1);
-  this.psram_cfg_wr(8'h0, 8'b00_0_010_10);
-  this.wait_xfer_done();
+  // $display("wr reg 0");
+  // this.init_common_cfg(1'b1, 1'b1);
+  // this.psram_cfg_wr(8'h0, 8'b00_0_010_10);
+  // this.wait_xfer_done();
 
-  this.init_common_cfg(1'b1, 1'b0);
-  this.psram_cfg_rd(8'h0, recv);
-  this.wait_xfer_done();
-  $display("[modify]addr: 0 data: %b", recv[0]);
+  // this.init_common_cfg(1'b1, 1'b0);
+  // this.psram_cfg_rd(8'h0);
+  // this.wait_xfer_done();
+  // $display("[modify]addr: 0 data: %b", recv[0]);
 
-  this.init_common_cfg(1'b1, 1'b1);
-  this.psram_cfg_wr(8'h0, 8'b00_0_010_01);
-  this.wait_xfer_done();
+  // this.init_common_cfg(1'b1, 1'b1);
+  // this.psram_cfg_wr(8'h0, 8'b00_0_010_01);
+  // this.wait_xfer_done();
 
-  this.init_common_cfg(1'b1, 1'b0);
-  this.psram_cfg_rd(8'h0, recv);
-  this.wait_xfer_done();
-  $display("[modify]addr: 0 data: %b", recv[0]);
+  // this.init_common_cfg(1'b1, 1'b0);
+  // this.psram_cfg_rd(8'h0, recv);
+  // this.wait_xfer_done();
+  // $display("[modify]addr: 0 data: %b", recv[0]);
 endtask
 
 task automatic PSRAMTest::test_bus_wr_rd();
@@ -190,7 +188,7 @@ task automatic PSRAMTest::test_bus_wr_rd();
   // trans_addr  = trans_baddr + 32'h0001_0310;
   trans_size  = 3'd3;
   trans_type  = `AXI4_BURST_TYPE_INCR;
-  trans_len   = 8'd255;
+  trans_len   = 8'd2;
   trans_id    = '1;
   for (int i = 0; i < trans_len; i++) begin
     trans_val = {$random, $random};

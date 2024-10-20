@@ -162,7 +162,7 @@ module psram_axi4_slv_fsm #(
     awready          = '0;
     bvalid           = '0;
     bresp            = '0;
-    bid              = '0;
+    bid              = s_axi_req_q.id;
     buser            = '0;
 
     case (s_state_q)
@@ -192,11 +192,10 @@ module psram_axi4_slv_fsm #(
       end
 
       READ: begin
-        if (rready) begin
-          rid   = s_axi_req_q.id;
-          rlast = s_trans_cnt_q == s_axi_req_q.len + 1;
-
-          if (rvalid) begin
+        rid   = s_axi_req_q.id;
+        rlast = s_trans_cnt_q == s_axi_req_q.len + 1;
+        if (rvalid) begin
+          if (rready) begin
             s_axi_req_d.addr = s_xfer_nxt_addr;
             case (s_axi_req_q.burst)
               FIXED, INCR: s_usr_addr_d = s_xfer_nxt_addr[USR_ADDR_WIDTH-1:`AXI4_DATA_BLOG];
@@ -274,7 +273,8 @@ module psram_axi4_slv_fsm #(
 
   // delay one cycle
   assign s_xfer_start_flag = (s_state_q == IDLE && awvalid && wvalid) ||
-                             (s_state_q == WRITE && wvalid) || (s_state_q == READ && rready);
+                             (s_state_q == WRITE && wvalid) || (s_state_q == READ) ||
+                             (s_state_q == READ && rready);
   edge_det_re #(
       .STAGE     (1),
       .DATA_WIDTH(1)
